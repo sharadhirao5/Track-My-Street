@@ -14,7 +14,6 @@ function Home() {
     <>
       <Navbar />
 
-      {/* Hero Section */}
       <section className="hero">
         <div className="hero-left">
           <h1>AI Powered Road Damage Detection</h1>
@@ -25,7 +24,7 @@ function Home() {
           </p>
 
           <div className="hero-buttons">
-            <Link to="/dashboard" className="btn-primary">
+            <Link to="/report" className="btn-primary">
               Report Damage
             </Link>
 
@@ -40,7 +39,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Statistics Section */}
       <section className="stats">
         <div className="stat-box">
           <h2>1200+</h2>
@@ -63,7 +61,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="features">
         <div className="card">
           <FaCamera className="icon" />
@@ -90,7 +87,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="footer">
         <h2>Track My Street</h2>
 
