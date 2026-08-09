@@ -6,8 +6,10 @@ function ReportDamage() {
   const [damageType, setDamageType] = useState("");
   const [image, setImage] = useState(null);
   const [location, setLocation] = useState("");
+  const [coordinates, setCoordinates] = useState(null);
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const handleImageChange = (event) => {
     const selectedImage = event.target.files[0];
@@ -15,6 +17,41 @@ function ReportDamage() {
     if (selectedImage) {
       setImage(selectedImage);
     }
+  };
+
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      setMessage("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocationLoading(true);
+    setMessage("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        setCoordinates({
+          latitude,
+          longitude,
+        });
+
+        setLocation(
+          `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`
+        );
+
+        setLocationLoading(false);
+      },
+      () => {
+        setMessage(
+          "Unable to get your location. Please allow location access."
+        );
+
+        setLocationLoading(false);
+      }
+    );
   };
 
   const handleSubmit = (event) => {
@@ -80,12 +117,37 @@ function ReportDamage() {
             <div className="form-group">
               <label>Location</label>
 
-              <input
-                type="text"
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-                placeholder="Enter road location"
-              />
+              <div className="location-input">
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
+                  placeholder="Enter road location"
+                />
+
+                <button
+                  type="button"
+                  className="location-btn"
+                  onClick={getLocation}
+                  disabled={locationLoading}
+                >
+                  {locationLoading
+                    ? "Detecting..."
+                    : "📍 Use My Location"}
+                </button>
+              </div>
+
+              {coordinates && (
+                <div className="coordinates">
+                  <strong>Location detected</strong>
+                  <p>
+                    Latitude: {coordinates.latitude.toFixed(6)}
+                  </p>
+                  <p>
+                    Longitude: {coordinates.longitude.toFixed(6)}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="form-group">

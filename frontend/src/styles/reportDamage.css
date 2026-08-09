@@ -130,3 +130,62 @@
     text-align: center;
     font-size: 14px;
 }
+.location-input {
+    display: flex;
+    gap: 10px;
+}
+
+.location-input input {
+    flex: 1;
+}
+
+.location-btn {
+    padding: 13px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #0f172a;
+    color: white;
+    font-family: "Poppins", sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: 0.3s;
+}
+
+.location-btn:hover {
+    background: #1e293b;
+}
+
+.location-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.coordinates {
+    margin-top: 12px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.coordinates strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.coordinates p {
+    margin: 3px 0;
+    font-size: 14px;
+}
+
+@media (max-width: 600px) {
+    .location-input {
+        flex-direction: column;
+    }
+
+    .location-btn {
+        width: 100%;
+    }
+}
