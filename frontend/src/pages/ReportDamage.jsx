@@ -1,7 +1,33 @@
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import "../styles/reportDamage.css";
 
 function ReportDamage() {
+  const [damageType, setDamageType] = useState("");
+  const [image, setImage] = useState(null);
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleImageChange = (event) => {
+    const selectedImage = event.target.files[0];
+
+    if (selectedImage) {
+      setImage(selectedImage);
+    }
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!damageType || !image || !location || !description) {
+      setMessage("Please fill in all fields and upload an image.");
+      return;
+    }
+
+    setMessage("Complaint details are ready to be submitted.");
+  };
+
   return (
     <>
       <Navbar />
@@ -14,11 +40,14 @@ function ReportDamage() {
             Help improve your community by reporting damaged roads.
           </p>
 
-          <form>
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Damage Type</label>
 
-              <select>
+              <select
+                value={damageType}
+                onChange={(event) => setDamageType(event.target.value)}
+              >
                 <option value="">Select damage type</option>
                 <option value="pothole">Pothole</option>
                 <option value="crack">Road Crack</option>
@@ -30,7 +59,22 @@ function ReportDamage() {
             <div className="form-group">
               <label>Upload Road Image</label>
 
-              <input type="file" accept="image/*" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+
+              {image && (
+                <div className="image-preview">
+                  <img
+                    src={URL.createObjectURL(image)}
+                    alt="Road damage preview"
+                  />
+
+                  <p>{image.name}</p>
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -38,6 +82,8 @@ function ReportDamage() {
 
               <input
                 type="text"
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
                 placeholder="Enter road location"
               />
             </div>
@@ -47,9 +93,17 @@ function ReportDamage() {
 
               <textarea
                 rows="5"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
                 placeholder="Describe the road damage..."
               ></textarea>
             </div>
+
+            {message && (
+              <p className="form-message">
+                {message}
+              </p>
+            )}
 
             <button type="submit" className="submit-btn">
               Submit Complaint
