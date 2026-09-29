@@ -1,0 +1,5 @@
+ai-model/venv/
+ai-model/runs/
+ai-model/uploads/
+__pycache__/
+*.pyc
