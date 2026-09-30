@@ -1,36 +1,76 @@
 const jwt = require("jsonwebtoken");
 
 const protect = (req, res, next) => {
+
   let token;
 
-  // Check Authorization header
+  // =====================================================
+  // CHECK AUTHORIZATION HEADER
+  // =====================================================
+
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
+
     try {
-      // Extract token
-      token = req.headers.authorization.split(" ")[1];
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // -------------------------------------------------
+      // EXTRACT TOKEN
+      // -------------------------------------------------
 
-      // Save decoded user info
-      req.user = decoded;
+      token =
+        req.headers.authorization.split(" ")[1];
 
-      next();
+
+      // -------------------------------------------------
+      // VERIFY TOKEN
+      // -------------------------------------------------
+
+      const decoded =
+        jwt.verify(
+          token,
+          process.env.JWT_SECRET
+        );
+
+
+      // -------------------------------------------------
+      // SAVE USER INFORMATION
+      // -------------------------------------------------
+
+      req.user =
+        decoded;
+
+
+      return next();
+
     } catch (error) {
+
       return res.status(401).json({
-        message: "Invalid Token",
+
+        message:
+          "Invalid Token"
+
       });
+
     }
+
   }
 
-  if (!token) {
-    return res.status(401).json({
-      message: "No Token Provided",
-    });
-  }
+
+  // =====================================================
+  // NO TOKEN
+  // =====================================================
+
+  return res.status(401).json({
+
+    message:
+      "No Token Provided"
+
+  });
+
 };
 
-module.exports = protect;
+
+module.exports =
+  protect;

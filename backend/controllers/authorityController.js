@@ -7,6 +7,14 @@ const User =
 const Complaint =
   require("../models/Complaint");
 
+const ComplaintHistory =
+  require("../models/ComplaintHistory");
+
+const {
+  createNotification
+} =
+  require("../utils/notificationUtils");
+
 
 // =====================================================
 // CREATE AUTHORITY PROFILE
@@ -54,9 +62,7 @@ const createAuthority =
       // -------------------------------------------------
 
       const user =
-        await User.findById(
-          userId
-        );
+        await User.findById(userId);
 
 
       if (!user) {
@@ -321,6 +327,10 @@ const assignComplaint =
       } = req.body;
 
 
+      // -------------------------------------------------
+      // REQUIRED FIELDS
+      // -------------------------------------------------
+
       if (
         !authorityId ||
         !complaintId
@@ -517,6 +527,262 @@ const getAssignedComplaints =
 
 
 // =====================================================
+// UPDATE ASSIGNED COMPLAINT STATUS
+// AUTHORITY ONLY
+// =====================================================
+
+const updateAssignedComplaintStatus =
+  async (req, res) => {
+
+    try {
+
+      const {
+        complaintId,
+        status,
+        remark
+      } = req.body;
+
+
+      // -------------------------------------------------
+      // REQUIRED FIELDS
+      // -------------------------------------------------
+
+      if (
+        !complaintId ||
+        !status
+      ) {
+
+        return res.status(400).json({
+
+          message:
+            "complaintId and status are required."
+
+        });
+
+      }
+
+
+      // -------------------------------------------------
+      // VALID STATUS
+      // -------------------------------------------------
+
+      const allowedStatuses = [
+
+        "Pending",
+
+        "In Progress",
+
+        "Resolved"
+
+      ];
+
+
+      if (
+        !allowedStatuses.includes(
+          status
+        )
+      ) {
+
+        return res.status(400).json({
+
+          message:
+            "Invalid complaint status."
+
+        });
+
+      }
+
+
+      // -------------------------------------------------
+      // FIND AUTHORITY
+      // -------------------------------------------------
+
+      const authority =
+        await Authority.findOne({
+
+          user:
+            req.user.id,
+
+          isActive:
+            true
+
+        });
+
+
+      if (!authority) {
+
+        return res.status(403).json({
+
+          message:
+            "Active authority profile not found."
+
+        });
+
+      }
+
+
+      // -------------------------------------------------
+      // FIND COMPLAINT
+      // -------------------------------------------------
+
+      const complaint =
+        await Complaint.findById(
+          complaintId
+        );
+
+
+      if (!complaint) {
+
+        return res.status(404).json({
+
+          message:
+            "Complaint not found."
+
+        });
+
+      }
+
+
+      // -------------------------------------------------
+      // VERIFY ASSIGNMENT
+      // -------------------------------------------------
+
+      if (
+        !complaint.assignedAuthority ||
+        complaint.assignedAuthority.toString() !==
+          authority._id.toString()
+      ) {
+
+        return res.status(403).json({
+
+          message:
+            "This complaint is not assigned to your authority profile."
+
+        });
+
+      }
+
+
+      // -------------------------------------------------
+      // SAVE PREVIOUS STATUS
+      // -------------------------------------------------
+
+      const previousStatus =
+        complaint.status;
+
+
+      // -------------------------------------------------
+      // UPDATE STATUS
+      // -------------------------------------------------
+
+      complaint.status =
+        status;
+
+
+      await complaint.save();
+
+
+      // -------------------------------------------------
+      // CREATE STATUS HISTORY
+      // -------------------------------------------------
+
+      const history =
+        await ComplaintHistory.create({
+
+          complaint:
+            complaint._id,
+
+          previousStatus:
+            previousStatus,
+
+          newStatus:
+            status,
+
+          changedBy:
+            req.user.id,
+
+          remark:
+            remark || ""
+
+        });
+
+
+      // -------------------------------------------------
+      // CREATE CITIZEN NOTIFICATION
+      // -------------------------------------------------
+
+      let notificationType =
+        "Status Updated";
+
+
+      if (
+        status ===
+        "Resolved"
+      ) {
+
+        notificationType =
+          "Complaint Resolved";
+
+      }
+
+
+      await createNotification({
+
+        userId:
+          complaint.user,
+
+        complaintId:
+          complaint._id,
+
+        title:
+          "Complaint Status Updated",
+
+        message:
+          `Your complaint "${complaint.title}" status has been updated from "${previousStatus}" to "${status}".`,
+
+        type:
+          notificationType
+
+      });
+
+
+      // -------------------------------------------------
+      // RESPONSE
+      // -------------------------------------------------
+
+      return res.status(200).json({
+
+        message:
+          "Complaint status updated successfully.",
+
+        complaint,
+
+        history
+
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "Update assigned complaint status error:",
+        error
+      );
+
+
+      return res.status(500).json({
+
+        message:
+          "Server Error"
+
+      });
+
+    }
+
+  };
+
+
+// =====================================================
 // EXPORT
 // =====================================================
 
@@ -530,6 +796,8 @@ module.exports = {
 
   assignComplaint,
 
-  getAssignedComplaints
+  getAssignedComplaints,
+
+  updateAssignedComplaintStatus
 
 };

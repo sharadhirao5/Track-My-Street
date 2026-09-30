@@ -1,18 +1,25 @@
-const express = require("express");
+const express =
+  require("express");
+
 
 const {
   createAuthority,
   getAuthorities,
   getAuthorityById,
   assignComplaint,
-  getAssignedComplaints
-} = require("../controllers/authorityController");
+  getAssignedComplaints,
+  updateAssignedComplaintStatus
+} =
+  require("../controllers/authorityController");
+
 
 const protect =
   require("../middleware/authMiddleware");
 
+
 const adminOnly =
   require("../middleware/adminMiddleware");
+
 
 const {
   validateObjectId
@@ -58,6 +65,18 @@ router.get(
   "/my-complaints",
   protect,
   getAssignedComplaints
+);
+
+
+// =====================================================
+// UPDATE ASSIGNED COMPLAINT STATUS
+// AUTHORITY ONLY
+// =====================================================
+
+router.put(
+  "/update-status",
+  protect,
+  updateAssignedComplaintStatus
 );
 
 
