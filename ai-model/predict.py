@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 
-# Load the trained pothole detection model
-model = YOLO("runs/detect/results/pothole_model/weights/best.pt")
+# Load the trained TrackMyStreet model
+model = YOLO("models/best.pt")
 
 # Run prediction on test images
 results = model.predict(
