@@ -46,7 +46,7 @@ const registerUser = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
+    
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
         message: "Please provide a valid email address.",

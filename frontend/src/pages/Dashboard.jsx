@@ -16,6 +16,7 @@ import {
 
 function Dashboard() {
   const navigate = useNavigate();
+
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,7 +38,9 @@ function Dashboard() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || "Unable to load complaints.");
+          throw new Error(
+            data.message || "Unable to load complaints."
+          );
         }
 
         const items = Array.isArray(data)
@@ -56,11 +59,13 @@ function Dashboard() {
   }, []);
 
   const totalReports = complaints.length;
+
   const pendingReports = complaints.filter((complaint) =>
     ["pending", "submitted", "in progress", "in-progress"].includes(
       String(complaint.status || "").toLowerCase()
     )
   ).length;
+
   const resolvedReports = complaints.filter(
     (complaint) =>
       String(complaint.status || "").toLowerCase() === "resolved"
@@ -79,15 +84,21 @@ function Dashboard() {
     complaint.location?.address ||
     complaint.location?.name ||
     complaint.address ||
-    (typeof complaint.location === "string" ? complaint.location : "") ||
+    (typeof complaint.location === "string"
+      ? complaint.location
+      : "") ||
     "Location not available";
 
   const getDate = (complaint) => {
-    const value = complaint.createdAt || complaint.date || complaint.created_at;
+    const value =
+      complaint.createdAt ||
+      complaint.date ||
+      complaint.created_at;
 
     if (!value) return "N/A";
 
     const date = new Date(value);
+
     return Number.isNaN(date.getTime())
       ? "N/A"
       : date.toLocaleDateString();
@@ -106,7 +117,8 @@ function Dashboard() {
             <p className="dashboard-label">CITIZEN DASHBOARD</p>
             <h1>Welcome Back!</h1>
             <p>
-              Monitor your reported road damage and track complaint updates.
+              Monitor your reported road damage and track complaint
+              updates.
             </p>
           </div>
 
@@ -197,7 +209,9 @@ function Dashboard() {
               <FaCamera className="action-icon" />
               <div>
                 <h3>Report Road Damage</h3>
-                <p>Upload an image and report a damaged road.</p>
+                <p>
+                  Upload an image and report a damaged road.
+                </p>
               </div>
             </Link>
 
@@ -205,7 +219,9 @@ function Dashboard() {
               <FaClipboardList className="action-icon" />
               <div>
                 <h3>View My Complaints</h3>
-                <p>Track the status of your submitted complaints.</p>
+                <p>
+                  Track the status of your submitted complaints.
+                </p>
               </div>
             </Link>
           </div>
@@ -219,7 +235,9 @@ function Dashboard() {
             </div>
 
             <span className="complaint-count">
-              {loading ? "Loading..." : `${complaints.length} Recent`}
+              {loading
+                ? "Loading..."
+                : `${complaints.length} Recent`}
             </span>
           </div>
 
@@ -230,7 +248,10 @@ function Dashboard() {
           )}
 
           {!loading && !error && complaints.length === 0 && (
-            <p>No complaints found yet. Report road damage to get started.</p>
+            <p>
+              No complaints found yet. Report road damage to get
+              started.
+            </p>
           )}
 
           {complaints.length > 0 && (
@@ -254,6 +275,7 @@ function Dashboard() {
                       <div className="complaint-icon">
                         <FaMapMarkerAlt />
                       </div>
+
                       <div>
                         <h3>{getComplaintType(complaint)}</h3>
                         <p>{getComplaintId(complaint)}</p>
@@ -262,6 +284,7 @@ function Dashboard() {
 
                     <span>{getLocation(complaint)}</span>
                     <span>{getDate(complaint)}</span>
+
                     <span
                       className={`status ${String(status)
                         .toLowerCase()

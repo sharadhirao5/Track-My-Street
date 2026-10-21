@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import {
@@ -22,67 +22,73 @@ function MyComplaints() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchComplaints = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+  const fetchComplaints = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
-      setError("");
+        setError("");
 
-      const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token");
 
-      if (!token) {
-        setComplaints([]);
-        setError("Please log in to view your complaints.");
-        return;
-      }
+        if (!token) {
+          setComplaints([]);
+          setError("Please log in to view your complaints.");
+          return;
+        }
 
-      const response = await fetch(`${API_URL}/api/complaints`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        navigate("/login", {
-          state: { from: "/complaints" },
+        const response = await fetch(`${API_URL}/api/complaints`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-        return;
+
+        const data = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          navigate("/login", {
+            state: { from: "/complaints" },
+          });
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to load complaints."
+          );
+        }
+
+        let complaintList = [];
+
+        if (Array.isArray(data)) {
+          complaintList = data;
+        } else if (Array.isArray(data.complaints)) {
+          complaintList = data.complaints;
+        } else if (Array.isArray(data.data)) {
+          complaintList = data.data;
+        }
+
+        setComplaints(complaintList);
+      } catch (fetchError) {
+        console.error("Error fetching complaints:", fetchError);
+        setError(
+          fetchError.message ||
+            "Unable to load complaints. Please try again."
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to load complaints.");
-      }
-
-      let complaintList = [];
-
-      if (Array.isArray(data)) {
-        complaintList = data;
-      } else if (Array.isArray(data.complaints)) {
-        complaintList = data.complaints;
-      } else if (Array.isArray(data.data)) {
-        complaintList = data.data;
-      }
-
-      setComplaints(complaintList);
-    } catch (err) {
-      console.error("Error fetching complaints:", err);
-      setError(
-        err.message || "Unable to load complaints. Please try again."
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [navigate]);
+    },
+    [navigate]
+  );
 
   useEffect(() => {
     fetchComplaints();
@@ -108,22 +114,40 @@ function MyComplaints() {
     return "Pending";
   };
 
+  const getStatusStyle = (status) => {
+    const normalized = getStatus(status);
+
+    if (normalized === "Resolved") {
+      return {
+        color: "#146c2e",
+        backgroundColor: "#e6f7eb",
+      };
+    }
+
+    if (normalized === "In Progress") {
+      return {
+        color: "#8a5700",
+        backgroundColor: "#fff3cd",
+      };
+    }
+
+    return {
+      color: "#174ea6",
+      backgroundColor: "#e8f0fe",
+    };
+  };
+
   const getSeverityStyle = (severity) => {
-    const normalized = String(severity || "Low").toLowerCase();
-
-    if (normalized === "critical") {
-      return { color: "#b00020", fontWeight: 700 };
+    switch (String(severity || "Low").toLowerCase()) {
+      case "critical":
+        return { color: "#b00020", fontWeight: 700 };
+      case "high":
+        return { color: "#d93025", fontWeight: 600 };
+      case "medium":
+        return { color: "#8a5700", fontWeight: 600 };
+      default:
+        return { color: "#146c2e", fontWeight: 600 };
     }
-
-    if (normalized === "high") {
-      return { color: "#d93025", fontWeight: 600 };
-    }
-
-    if (normalized === "medium") {
-      return { color: "#8a5700", fontWeight: 600 };
-    }
-
-    return { color: "#146c2e", fontWeight: 600 };
   };
 
   const formatDate = (date) => {
@@ -162,6 +186,16 @@ function MyComplaints() {
     }
 
     return `${API_URL}${image.startsWith("/") ? "" : "/"}${image}`;
+  };
+
+  const formatConfidence = (confidence) => {
+    const value = Number(confidence);
+
+    if (!Number.isFinite(value)) {
+      return "Not available";
+    }
+
+    return `${(value * 100).toFixed(1)}%`;
   };
 
   return (
@@ -208,7 +242,10 @@ function MyComplaints() {
         )}
 
         {!loading && error && (
-          <section className="complaints-message complaints-error" role="alert">
+          <section
+            className="complaints-message complaints-error"
+            role="alert"
+          >
             <FaExclamationCircle />
             <span>{error}</span>
 
@@ -216,7 +253,10 @@ function MyComplaints() {
               <Link to="/login">Log in</Link>
             )}
 
-            <button type="button" onClick={() => fetchComplaints()}>
+            <button
+              type="button"
+              onClick={() => fetchComplaints()}
+            >
               Try again
             </button>
           </section>
@@ -248,11 +288,16 @@ function MyComplaints() {
                   complaint.imageUrl ||
                   complaint.photo
               );
+              const ai = complaint.aiDetection;
 
               return (
                 <article
                   className="complaint-card"
-                  key={complaintId === "ID unavailable" ? index : complaintId}
+                  key={
+                    complaintId === "ID unavailable"
+                      ? index
+                      : complaintId
+                  }
                 >
                   <div className="complaint-card-top">
                     <div className="complaint-title">
@@ -272,6 +317,7 @@ function MyComplaints() {
                       className={`complaint-status ${status
                         .toLowerCase()
                         .replace(/\s+/g, "-")}`}
+                      style={getStatusStyle(status)}
                     >
                       {status}
                     </span>
@@ -310,19 +356,6 @@ function MyComplaints() {
                     </p>
                   )}
 
-                  {(complaint.latitude != null ||
-                    complaint.longitude != null) && (
-                    <div className="complaint-location-coordinates">
-                      <strong>Coordinates</strong>
-                      <p>
-                        Latitude: {complaint.latitude ?? "N/A"}
-                      </p>
-                      <p>
-                        Longitude: {complaint.longitude ?? "N/A"}
-                      </p>
-                    </div>
-                  )}
-
                   {imageUrl && (
                     <div className="complaint-image-container">
                       <strong>Reported Road Damage</strong>
@@ -334,6 +367,72 @@ function MyComplaints() {
                       />
                     </div>
                   )}
+
+                  {(complaint.latitude != null ||
+                    complaint.longitude != null) && (
+                    <div className="complaint-location-coordinates">
+                      <strong>Coordinates</strong>
+                      <p>Latitude: {complaint.latitude ?? "N/A"}</p>
+                      <p>Longitude: {complaint.longitude ?? "N/A"}</p>
+                    </div>
+                  )}
+
+                  <div className="ai-detection-results">
+                    <h3>🤖 AI Detection Results</h3>
+
+                    {!ai ? (
+                      <p>
+                        No AI detection results were saved for this complaint.
+                      </p>
+                    ) : (
+                      <>
+                        <p>
+                          <strong>Damage detected:</strong>{" "}
+                          {ai.damage_detected ? "Yes" : "No"}
+                        </p>
+                        <p>
+                          <strong>Total detections:</strong>{" "}
+                          {ai.total_detections ?? 0}
+                        </p>
+
+                        {Array.isArray(ai.detections) &&
+                          ai.detections.length > 0 && (
+                            <ul>
+                              {ai.detections.map((detection, i) => (
+                                <li
+                                  key={`${detection.class || "object"}-${i}`}
+                                >
+                                  <strong>
+                                    {detection.class || "Unknown class"}
+                                  </strong>
+                                  {" — "}
+                                  Confidence:{" "}
+                                  {formatConfidence(detection.confidence)}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                        {ai.annotated_image && (
+                          <div className="complaint-image-container">
+                            <strong>AI Annotated Image</strong>
+                            <img
+                              src={getImageUrl(ai.annotated_image)}
+                              alt="AI detection annotations"
+                              className="complaint-image"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+
+                        <p>
+                          AI confidence describes the model's confidence in
+                          its prediction; it does not independently establish
+                          the physical severity of road damage.
+                        </p>
+                      </>
+                    )}
+                  </div>
 
                   <div className="complaint-card-footer">
                     <span className="complaint-footer-status">

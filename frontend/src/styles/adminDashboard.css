@@ -426,3 +426,408 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =====================================================
+   ADMIN DASHBOARD HEADER AND ADDITIONAL ELEMENTS
+===================================================== */
+
+
+.admin-header {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 18px 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.admin-header h1,
+.admin-header p {
+  color: #ffffff;
+}
+
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-button-light {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #ffffff;
+}
+
+.admin-panel-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-panel-heading-row .admin-panel-heading {
+  margin-bottom: 0;
+}
+
+.admin-muted {
+  color: #64748b;
+}
+
+.admin-ai-box {
+  min-width: 190px;
+  max-width: 280px;
+  padding: 10px;
+  background: #f0f7ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.admin-ai-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.admin-ai-detected {
+  color: #166534;
+}
+
+.admin-ai-clear {
+  color: #475569;
+}
+
+.admin-ai-total {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admin-ai-list {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.admin-ai-list li {
+  margin-bottom: 5px;
+}
+
+.admin-ai-confidence {
+  font-size: 12px;
+  color: #475569;
+}
+
+.admin-ai-empty {
+  font-size: 12px;
+}
+
+.admin-ai-image-wrap {
+  margin-top: 10px;
+}
+
+.admin-ai-image-wrap p {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+
+.admin-ai-image {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  border-radius: 6px;
+}
+
+.admin-complaint-description {
+  max-width: 220px;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-update-button {
+  white-space: nowrap;
+}
+
+.admin-damage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-damage-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.admin-damage-list li:last-child {
+  border-bottom: 0;
+}
+
+/* =====================================================
+   LEAFLET / OPENSTREETMAP COMPLAINT MAP
+===================================================== */
+
+.road-map-panel {
+  overflow: hidden;
+}
+
+.road-map-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.road-map-heading .admin-panel-heading {
+  margin: 0 0 6px;
+}
+
+.road-map-description {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.road-map-count {
+  color: #142b4a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.road-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.road-map-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.road-map-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.pending-dot {
+  background: #f97316;
+}
+
+.progress-dot {
+  background: #2563eb;
+}
+
+.resolved-dot {
+  background: #16a34a;
+}
+
+.road-map-container {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: 420px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.road-map {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.road-map-empty {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.road-map-footnote {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.road-map-popup {
+  min-width: 190px;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.road-map-popup p {
+  margin: 7px 0;
+}
+
+.road-map-popup a {
+  display: inline-block;
+  margin-top: 8px;
+  color: #2563eb;
+}
+
+/* Keep Leaflet controls below application overlays. */
+.road-map-container .leaflet-pane,
+.road-map-container .leaflet-top,
+.road-map-container .leaflet-bottom {
+  z-index: 1;
+}
+
+@media (max-width: 650px) {
+  .admin-header {
+    padding: 16px 5%;
+  }
+
+  .admin-header-actions {
+    width: 100%;
+  }
+
+  .road-map-container {
+    height: 340px;
+  }
+
+  .road-map-heading {
+    align-items: flex-start;
+  }
+}
+
+/* Road Damage Map Filters */
+.road-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0 18px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.road-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.map-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.pending-dot {
+  background: #f97316;
+}
+
+.progress-dot {
+  background: #2563eb;
+}
+
+.resolved-dot {
+  background: #16a34a;
+}
+
+.road-map-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr)) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.road-map-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.road-map-filter label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.road-map-filter select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.road-map-filter select:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+
+.road-map-reset {
+  min-height: 40px;
+  padding: 8px 14px;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.road-map-reset:hover {
+  background: #e2e8f0;
+}
+
+.road-map-popup p {
+  margin: 7px 0;
+  font-size: 13px;
+}
+
+.road-map-popup a {
+  display: inline-block;
+  margin-top: 6px;
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .road-map-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .road-map-reset {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .road-map-filters {
+    grid-template-columns: 1fr;
+  }
+}

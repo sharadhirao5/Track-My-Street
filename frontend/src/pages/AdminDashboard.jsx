@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import ComplaintMap from "../components/ComplaintMap";
 import "../styles/adminDashboard.css";
 
 const API = "http://localhost:5000/api";
 const STATUSES = ["Pending", "In Progress", "Resolved"];
 
 function formatDamageType(value) {
-  return (value || "Unknown")
+  return String(value || "Unknown")
     .replaceAll("_", " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
@@ -16,9 +17,82 @@ function formatDate(value) {
   if (!value) return "—";
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+function getConfidencePercent(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return "—";
+
+  return `${(number <= 1 ? number * 100 : number).toFixed(1)}%`;
+}
+
+function AIResults({ ai }) {
+  if (!ai) {
+    return <span className="admin-muted">No AI results saved</span>;
+  }
+
+  const detections = Array.isArray(ai.detections) ? ai.detections : [];
+  const detected = Boolean(ai.damage_detected);
+  const total = Number(ai.total_detections ?? detections.length);
+
+  return (
+    <div className="admin-ai-box">
+      <div
+        className={`admin-ai-title ${
+          detected ? "admin-ai-detected" : "admin-ai-clear"
+        }`}
+      >
+        {detected ? "Road damage detected" : "No damage detected"}
+      </div>
+
+      <div className="admin-ai-total">
+        Total detections: {Number.isFinite(total) ? total : 0}
+      </div>
+
+      {detections.length > 0 ? (
+        <ul className="admin-ai-list">
+          {detections.map((item, index) => (
+            <li key={`${item.class || "damage"}-${index}`}>
+              <strong>{formatDamageType(item.class)}</strong>
+              <div className="admin-ai-confidence">
+                Confidence: {getConfidencePercent(item.confidence)}
+                {item.confidence_label
+                  ? ` · ${item.confidence_label}`
+                  : ""}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="admin-muted admin-ai-empty">
+          No individual detections available.
+        </div>
+      )}
+
+      {ai.annotated_image && (
+        <div className="admin-ai-image-wrap">
+          <p>Annotated detection image</p>
+
+          <img
+            src={
+              String(ai.annotated_image).startsWith("http")
+                ? ai.annotated_image
+                : `http://localhost:5001${
+                    String(ai.annotated_image).startsWith("/") ? "" : "/"
+                  }${ai.annotated_image}`
+            }
+            alt="AI-detected road damage"
+            className="admin-ai-image"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function getStoredUser() {
@@ -51,9 +125,8 @@ function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     const token = localStorage.getItem("token");
-    const user = getStoredUser();
 
-    if (!token || user?.role !== "admin") {
+    if (!token) {
       logout();
       return;
     }
@@ -80,9 +153,8 @@ function AdminDashboard() {
         complaintsResponse.status === 401 ||
         complaintsResponse.status === 403
       ) {
-        throw new Error(
-          "Access denied. Please log in with a valid administrator account."
-        );
+        logout();
+        return;
       }
 
       if (!statsResponse.ok) {
@@ -108,8 +180,9 @@ function AdminDashboard() {
         const next = { ...previous };
 
         for (const complaint of complaintList) {
-          next[complaint._id] =
-            previous[complaint._id] || complaint.status;
+          if (!(complaint._id in next)) {
+            next[complaint._id] = complaint.status;
+          }
         }
 
         return next;
@@ -164,6 +237,11 @@ function AdminDashboard() {
 
       const data = await response.json();
 
+      if (response.status === 401 || response.status === 403) {
+        logout();
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.message || "Unable to update status.");
       }
@@ -202,44 +280,66 @@ function AdminDashboard() {
   });
 
   const statCards = [
-    { label: "Total Complaints", value: statistics?.total ?? "—", type: "total" },
-    { label: "Pending", value: statistics?.pending ?? "—", type: "pending" },
-    { label: "In Progress", value: statistics?.inProgress ?? "—", type: "progress" },
-    { label: "Resolved", value: statistics?.resolved ?? "—", type: "resolved" },
-    { label: "High / Critical", value: statistics?.highSeverity ?? "—", type: "severity" },
+    {
+      label: "Total Complaints",
+      value: statistics?.total ?? "—",
+      className: "admin-stat-total",
+    },
+    {
+      label: "Pending",
+      value: statistics?.pending ?? "—",
+      className: "admin-stat-pending",
+    },
+    {
+      label: "In Progress",
+      value: statistics?.inProgress ?? "—",
+      className: "admin-stat-progress",
+    },
+    {
+      label: "Resolved",
+      value: statistics?.resolved ?? "—",
+      className: "admin-stat-resolved",
+    },
+    {
+      label: "High / Critical",
+      value: statistics?.highSeverity ?? "—",
+      className: "admin-stat-severity",
+    },
   ];
 
   return (
     <div className="admin-page">
-      <Navbar />
+      <header className="admin-header">
+        <div>
+          <h1>🚧 Track My Street</h1>
+          <p>Admin Dashboard</p>
+        </div>
+
+        <div className="admin-header-actions">
+          <button
+            className="admin-button admin-button-light"
+            onClick={loadData}
+            disabled={loading}
+          >
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+
+          <button
+            className="admin-button admin-button-danger"
+            onClick={logout}
+          >
+            Logout
+          </button>
+        </div>
+      </header>
 
       <main className="admin-main">
-        <section className="admin-heading">
+        <div className="admin-heading">
           <div>
-            <p className="admin-eyebrow">ADMINISTRATION</p>
-            <h1>Admin Dashboard</h1>
-            <p className="admin-subtitle">
-              Monitor road damage reports and manage complaint progress.
-            </p>
+            <h2>Overview</h2>
+            <p>Review reports, AI results and manage complaint progress.</p>
           </div>
-
-          <div className="admin-heading-actions">
-            <button
-              className="admin-button admin-button-primary"
-              onClick={loadData}
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "↻ Refresh"}
-            </button>
-
-            <button
-              className="admin-button admin-button-danger"
-              onClick={logout}
-            >
-              Logout
-            </button>
-          </div>
-        </section>
+        </div>
 
         {error && (
           <div className="admin-alert admin-alert-error" role="alert">
@@ -256,22 +356,21 @@ function AdminDashboard() {
         <section className="admin-stats">
           {statCards.map((item) => (
             <article
-              className={`admin-stat-card admin-stat-${item.type}`}
               key={item.label}
+              className={`admin-stat-card ${item.className}`}
             >
               <p>{item.label}</p>
-              <h2>{item.value}</h2>
+              <h3>{item.value}</h3>
             </article>
           ))}
         </section>
 
-        <section className="admin-panel">
-          <div className="admin-panel-heading">
-            <div>
-              <h2>Complaint Management</h2>
-              <p>Search reports, filter results and update complaint status.</p>
-            </div>
+        {/* New map section. Uses the existing protected /api/map/complaints API. */}
+        <ComplaintMap />
 
+        <section className="admin-panel">
+          <div className="admin-panel-heading-row">
+            <h2 className="admin-panel-heading">Complaint Management</h2>
             <span className="admin-result-count">
               {filteredComplaints.length} complaints
             </span>
@@ -279,17 +378,17 @@ function AdminDashboard() {
 
           <div className="admin-filters">
             <input
+              className="admin-input"
               type="search"
-              className="admin-input admin-search"
-              placeholder="Search complaints or citizens..."
+              placeholder="Search complaints or citizens"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
             />
 
             <select
               className="admin-input"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(event) => setStatusFilter(event.target.value)}
               aria-label="Filter by status"
             >
               <option value="All">All statuses</option>
@@ -303,7 +402,7 @@ function AdminDashboard() {
             <select
               className="admin-input"
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              onChange={(event) => setSeverityFilter(event.target.value)}
               aria-label="Filter by severity"
             >
               <option value="All">All severities</option>
@@ -330,6 +429,7 @@ function AdminDashboard() {
                       "Damage",
                       "Severity",
                       "Location",
+                      "AI Detection",
                       "Submitted",
                       "Status",
                       "Action",
@@ -344,13 +444,24 @@ function AdminDashboard() {
                     <tr key={complaint._id}>
                       <td>
                         <strong>{complaint.title || "Untitled"}</strong>
-                        <p className="admin-description">
+                        <p className="admin-complaint-description">
                           {complaint.description || ""}
                         </p>
+
+                        {complaint.image && (
+                          <a
+                            href={`http://localhost:5000${complaint.image}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View image
+                          </a>
+                        )}
                       </td>
 
                       <td>
-                        <strong>{complaint.user?.name || "Unknown"}</strong>
+                        {complaint.user?.name || "Unknown"}
+                        <br />
                         <small>{complaint.user?.email || ""}</small>
                       </td>
 
@@ -358,7 +469,7 @@ function AdminDashboard() {
 
                       <td>
                         <span
-                          className={`admin-severity admin-severity-${(
+                          className={`admin-severity-badge admin-severity-${String(
                             complaint.severity || "unknown"
                           ).toLowerCase()}`}
                         >
@@ -371,22 +482,28 @@ function AdminDashboard() {
                         {complaint.longitude ?? "—"}
                       </td>
 
+                      <td>
+                        <AIResults ai={complaint.aiDetection} />
+                      </td>
+
                       <td>{formatDate(complaint.createdAt)}</td>
 
                       <td>
                         <select
-                          className="admin-input admin-status-select"
+                          className="admin-status-select"
                           value={
-                            selectedStatuses[complaint._id] ||
+                            selectedStatuses[complaint._id] ??
                             complaint.status
                           }
-                          onChange={(e) =>
+                          onChange={(event) =>
                             setSelectedStatuses((previous) => ({
                               ...previous,
-                              [complaint._id]: e.target.value,
+                              [complaint._id]: event.target.value,
                             }))
                           }
-                          aria-label={`Status for ${complaint.title || "complaint"}`}
+                          aria-label={`Status for ${
+                            complaint.title || "complaint"
+                          }`}
                         >
                           {STATUSES.map((status) => (
                             <option key={status} value={status}>
@@ -401,7 +518,7 @@ function AdminDashboard() {
                           className="admin-button admin-button-primary admin-update-button"
                           disabled={
                             updatingId === complaint._id ||
-                            (selectedStatuses[complaint._id] ||
+                            (selectedStatuses[complaint._id] ??
                               complaint.status) === complaint.status
                           }
                           onClick={() => updateStatus(complaint)}
@@ -419,30 +536,22 @@ function AdminDashboard() {
           )}
         </section>
 
-        <section className="admin-panel admin-damage-panel">
-          <div className="admin-panel-heading">
-            <div>
-              <h2>Complaints by Damage Type</h2>
-              <p>Breakdown of reported road damage.</p>
-            </div>
-          </div>
+        <section className="admin-panel">
+          <h2 className="admin-panel-heading">Complaints by Damage Type</h2>
 
           {!statistics?.byDamageType?.length ? (
             <p className="admin-empty">
               No damage-type statistics available.
             </p>
           ) : (
-            <div className="admin-damage-list">
-              {statistics.byDamageType.map((item) => (
-                <div
-                  className="admin-damage-item"
-                  key={item._id || "unknown"}
-                >
+            <ul className="admin-damage-list">
+              {statistics.byDamageType.map((item, index) => (
+                <li key={item._id || `unknown-${index}`}>
                   <span>{formatDamageType(item._id)}</span>
                   <strong>{item.count}</strong>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
       </main>
