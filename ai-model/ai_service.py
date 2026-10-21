@@ -1,55 +1,89 @@
-from ultralytics import YOLO
 import os
+from pathlib import Path
 
-# Path to trained YOLO model
-MODEL_PATH = "runs/detect/results/pothole_model/weights/best.pt"
+import cv2
+from ultralytics import YOLO
 
-# Load model once
-model = YOLO(MODEL_PATH)
+
+# Get the ai-model folder regardless of where Python is launched.
+BASE_DIR = Path(__file__).resolve().parent
+
+# Correct location of your trained model.
+MODEL_PATH = BASE_DIR / "models" / "best.pt"
+
+if not MODEL_PATH.is_file():
+    raise FileNotFoundError(
+        f"Trained YOLO model not found at: {MODEL_PATH}"
+    )
+
+# Load the trained model once when the service starts.
+model = YOLO(str(MODEL_PATH))
 
 
 def detect_potholes(image_path, output_dir="uploads/results"):
     """
-    Detect potholes and save an annotated image with bounding boxes.
+    Detect road damage and save an annotated image.
     """
 
-    # Create output folder
-    os.makedirs(output_dir, exist_ok=True)
+    image_path = Path(image_path).resolve()
+    output_dir = Path(output_dir).resolve()
 
-    # Run YOLO detection
-    results = model(image_path)
+    if not image_path.is_file():
+        raise FileNotFoundError(
+            f"Input image not found: {image_path}"
+        )
+
+    image = cv2.imread(str(image_path))
+
+    if image is None:
+        raise ValueError(
+            "The uploaded file is not a valid readable image."
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    results = model.predict(
+        source=str(image_path),
+        verbose=False
+    )
 
     detections = []
+    annotated_path = None
 
     for result in results:
-
         boxes = result.boxes
 
         if boxes is not None:
-
             for box in boxes:
+                class_id = int(box.cls[0].item())
+                confidence = float(box.conf[0].item())
 
-                class_id = int(box.cls[0])
-                confidence = float(box.conf[0])
+                if isinstance(model.names, dict):
+                    class_name = model.names.get(
+                        class_id, str(class_id)
+                    )
+                else:
+                    class_name = (
+                        model.names[class_id]
+                        if class_id < len(model.names)
+                        else str(class_id)
+                    )
 
-                # Class name
-                class_name = model.names[class_id]
-
-                # Bounding box
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
 
-                # Severity
+                # These labels represent model confidence,
+                # not the physical severity of the road damage.
                 if confidence >= 0.80:
-                    severity = "High"
+                    confidence_label = "High"
                 elif confidence >= 0.50:
-                    severity = "Medium"
+                    confidence_label = "Medium"
                 else:
-                    severity = "Low"
+                    confidence_label = "Low"
 
                 detections.append({
                     "class": class_name,
                     "confidence": round(confidence, 4),
-                    "severity": severity,
+                    "confidence_label": confidence_label,
                     "bounding_box": {
                         "x1": round(x1, 2),
                         "y1": round(y1, 2),
@@ -58,25 +92,17 @@ def detect_potholes(image_path, output_dir="uploads/results"):
                     }
                 })
 
-        # Create annotated image
+        # Save the image with YOLO's detection annotations.
         annotated_image = result.plot()
+        output_filename = f"detected_{image_path.name}"
+        output_path = output_dir / output_filename
 
-        # Create output filename
-        original_name = os.path.basename(image_path)
-        output_filename = "detected_" + original_name
-
-        output_path = os.path.join(
-            output_dir,
-            output_filename
-        )
-
-        # Save annotated image
-        import cv2
-        cv2.imwrite(output_path, annotated_image)
+        if cv2.imwrite(str(output_path), annotated_image):
+            annotated_path = str(output_path)
 
     return {
         "damage_detected": len(detections) > 0,
         "total_detections": len(detections),
         "detections": detections,
-        "annotated_image": output_path if detections else None
+        "annotated_image": annotated_path
     }

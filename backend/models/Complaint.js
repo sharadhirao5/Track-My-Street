@@ -1,22 +1,62 @@
 const mongoose = require("mongoose");
 
+const detectionSchema = new mongoose.Schema(
+  {
+    class: {
+      type: String,
+      required: true
+    },
+    confidence: {
+      type: Number,
+      min: 0,
+      max: 1,
+      required: true
+    },
+    confidence_label: {
+      type: String,
+      enum: ["Low", "Medium", "High"],
+      default: "Low"
+    },
+    bounding_box: {
+      x1: Number,
+      y1: Number,
+      x2: Number,
+      y2: Number
+    }
+  },
+  { _id: false }
+);
+
+const aiDetectionSchema = new mongoose.Schema(
+  {
+    damage_detected: {
+      type: Boolean,
+      default: false
+    },
+    total_detections: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    detections: {
+      type: [detectionSchema],
+      default: []
+    },
+    annotated_image: {
+      type: String,
+      default: null
+    }
+  },
+  { _id: false }
+);
+
 const complaintSchema = new mongoose.Schema(
   {
-
-    // =================================================
-    // USER WHO SUBMITTED THE COMPLAINT
-    // =================================================
-
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
     },
-
-
-    // =================================================
-    // COMPLAINT TITLE
-    // =================================================
 
     title: {
       type: String,
@@ -24,51 +64,26 @@ const complaintSchema = new mongoose.Schema(
       trim: true
     },
 
-
-    // =================================================
-    // COMPLAINT DESCRIPTION
-    // =================================================
-
     description: {
       type: String,
       required: true,
       trim: true
     },
 
-
-    // =================================================
-    // UPLOADED IMAGE PATH
-    // =================================================
-
     image: {
       type: String,
       required: true
     },
-
-
-    // =================================================
-    // GPS LATITUDE
-    // =================================================
 
     latitude: {
       type: Number,
       required: true
     },
 
-
-    // =================================================
-    // GPS LONGITUDE
-    // =================================================
-
     longitude: {
       type: Number,
       required: true
     },
-
-
-    // =================================================
-    // TYPE OF ROAD DAMAGE
-    // =================================================
 
     damageType: {
       type: String,
@@ -76,58 +91,33 @@ const complaintSchema = new mongoose.Schema(
       trim: true
     },
 
-
-    // =================================================
-    // DAMAGE SEVERITY
-    // =================================================
-
     severity: {
       type: String,
-      enum: [
-        "Low",
-        "Medium",
-        "High",
-        "Critical"
-      ],
+      enum: ["Low", "Medium", "High", "Critical"],
       default: "Medium"
     },
 
-
-    // =================================================
-    // COMPLAINT STATUS
-    // =================================================
+    // Results returned by the AI detection service.
+    aiDetection: {
+      type: aiDetectionSchema,
+      default: undefined
+    },
 
     status: {
       type: String,
-      enum: [
-        "Pending",
-        "In Progress",
-        "Resolved"
-      ],
+      enum: ["Pending", "In Progress", "Resolved"],
       default: "Pending"
     },
-
-
-    // =================================================
-    // ASSIGNED AUTHORITY
-    // =================================================
 
     assignedAuthority: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Authority",
       default: null
     }
-
   },
-
   {
     timestamps: true
   }
 );
 
-
-module.exports =
-  mongoose.model(
-    "Complaint",
-    complaintSchema
-  );
+module.exports = mongoose.model("Complaint", complaintSchema);

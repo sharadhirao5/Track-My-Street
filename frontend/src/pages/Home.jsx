@@ -1,6 +1,6 @@
 import Navbar from "../components/Navbar";
 import "../styles/home.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import heroImg from "../assets/hero-road.png";
 import {
   FaCamera,
@@ -10,6 +10,32 @@ import {
 } from "react-icons/fa";
 
 function Home() {
+  const navigate = useNavigate();
+
+  const handleReportClick = () => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (!token || !user) {
+      navigate("/register");
+      return;
+    }
+
+    navigate("/report");
+  };
+
+  const handleComplaintsClick = () => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (!token || !user) {
+      navigate("/register");
+      return;
+    }
+
+    navigate("/complaints");
+  };
+
   return (
     <>
       <Navbar />
@@ -24,13 +50,21 @@ function Home() {
           </p>
 
           <div className="hero-buttons">
-            <Link to="/report" className="btn-primary">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleReportClick}
+            >
               Report Damage
-            </Link>
+            </button>
 
-            <Link to="/login" className="btn-secondary">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleComplaintsClick}
+            >
               View Complaints
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -95,10 +129,10 @@ function Home() {
         </p>
 
         <div className="footer-links">
-          <a href="#">Home</a>
-          <a href="#">Login</a>
-          <a href="#">Register</a>
-          <a href="#">Contact</a>
+          <Link to="/">Home</Link>
+          <Link to="/login">Login</Link>
+          <Link to="/register">Register</Link>
+          <a href="mailto:support@trackmystreet.example">Contact</a>
         </div>
 
         <p className="copyright">

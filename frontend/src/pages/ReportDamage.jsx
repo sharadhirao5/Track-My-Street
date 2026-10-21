@@ -1,35 +1,51 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../styles/reportDamage.css";
+
+const API_URL = "http://localhost:5000/api";
+const AI_URL = "http://localhost:5001";
 
 function ReportDamage() {
   const navigate = useNavigate();
 
   const [damageType, setDamageType] = useState("");
   const [severity, setSeverity] = useState("Medium");
-
   const [image, setImage] = useState(null);
-
   const [location, setLocation] = useState("");
   const [coordinates, setCoordinates] = useState(null);
-
   const [description, setDescription] = useState("");
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
   const [locationLoading, setLocationLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // --------------------------------
-  // IMAGE SELECTION
-  // --------------------------------
+  const [aiResult, setAiResult] = useState(null);
+  const [aiError, setAiError] = useState("");
+
+  const [imagePreview, setImagePreview] = useState("");
+
+  useEffect(() => {
+    if (!image) {
+      setImagePreview("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(image);
+    setImagePreview(previewUrl);
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [image]);
+
   const handleImageChange = (event) => {
-    const selectedImage = event.target.files[0];
+    const selectedImage = event.target.files?.[0];
 
     setError("");
     setMessage("");
+    setAiError("");
+    setAiResult(null);
 
     if (!selectedImage) {
       setImage(null);
@@ -38,18 +54,16 @@ function ReportDamage() {
 
     const allowedTypes = [
       "image/jpeg",
-      "image/jpg",
-      "image/png",
+      "image/png"
     ];
 
     if (!allowedTypes.includes(selectedImage.type)) {
-      setError("Only JPG, JPEG and PNG images are allowed.");
+      setError("Only JPG, JPEG, and PNG images are allowed.");
       event.target.value = "";
       setImage(null);
       return;
     }
 
-    // Backend upload limit is 5 MB
     if (selectedImage.size > 5 * 1024 * 1024) {
       setError("Image size must be less than 5 MB.");
       event.target.value = "";
@@ -60,17 +74,12 @@ function ReportDamage() {
     setImage(selectedImage);
   };
 
-  // --------------------------------
-  // GET CURRENT LOCATION
-  // --------------------------------
   const getLocation = () => {
     setError("");
     setMessage("");
 
     if (!navigator.geolocation) {
-      setError(
-        "Geolocation is not supported by your browser."
-      );
+      setError("Geolocation is not supported by your browser.");
       return;
     }
 
@@ -81,295 +90,203 @@ function ReportDamage() {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
 
-        setCoordinates({
-          latitude,
-          longitude,
-        });
+        setCoordinates({ latitude, longitude });
 
         setLocation(
-          `Latitude: ${latitude.toFixed(
-            6
-          )}, Longitude: ${longitude.toFixed(6)}`
+          `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`
         );
 
         setLocationLoading(false);
       },
-
       (locationError) => {
-        console.error(
-          "Location error:",
-          locationError
-        );
+        console.error("Location error:", locationError);
 
         if (locationError.code === 1) {
           setError(
-            "Location permission was denied. Please allow location access."
+            "Location permission denied. Please allow location access."
           );
         } else if (locationError.code === 2) {
-          setError(
-            "Unable to determine your location."
-          );
+          setError("Unable to determine your location.");
         } else if (locationError.code === 3) {
-          setError(
-            "Location request timed out."
-          );
+          setError("Location request timed out.");
         } else {
-          setError(
-            "Unable to get your location."
-          );
+          setError("Unable to get your location.");
         }
 
         setLocationLoading(false);
       },
-
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0,
+        maximumAge: 0
       }
     );
   };
 
-  // --------------------------------
-  // CREATE BACKEND TITLE
-  // --------------------------------
   const getComplaintTitle = () => {
-    switch (damageType) {
-      case "pothole":
-        return "Pothole Road Damage";
+    const titles = {
+      pothole: "Pothole Road Damage",
+      crack: "Road Crack",
+      waterlogging: "Waterlogging",
+      broken_marking: "Broken Road Marking",
+      road_erosion: "Road Erosion",
+      surface_damage: "Road Surface Damage",
+      other: "Road Damage"
+    };
 
-      case "crack":
-        return "Road Crack";
+    return titles[damageType] || "Road Damage";
+  };
 
-      case "waterlogging":
-        return "Waterlogging";
+  // Send the selected image to the Flask AI service.
+  const handleDetectDamage = async () => {
+    setError("");
+    setMessage("");
+    setAiError("");
+    setAiResult(null);
 
-      case "broken_marking":
-        return "Broken Road Marking";
+    if (!image) {
+      setAiError("Please select a road image first.");
+      return;
+    }
 
-      case "road_erosion":
-        return "Road Erosion";
+    setDetecting(true);
 
-      case "surface_damage":
-        return "Road Surface Damage";
+    try {
+      const formData = new FormData();
+      formData.append("image", image);
 
-      case "other":
-        return "Road Damage";
+      const response = await fetch(`${AI_URL}/detect`, {
+        method: "POST",
+        body: formData
+      });
 
-      default:
-        return "Road Damage";
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.result) {
+        throw new Error(
+          data.error || "AI detection failed. Please try again."
+        );
+      }
+
+      const result = data.result;
+
+      if (
+        typeof result.damage_detected !== "boolean" ||
+        !Number.isInteger(result.total_detections) ||
+        !Array.isArray(result.detections)
+      ) {
+        throw new Error("The AI service returned an unexpected response.");
+      }
+
+      setAiResult(result);
+    } catch (detectionError) {
+      console.error("AI detection error:", detectionError);
+
+      setAiError(
+        detectionError.message ||
+          "Unable to connect to the AI service. Check that Flask is running on port 5001."
+      );
+    } finally {
+      setDetecting(false);
     }
   };
 
-  // --------------------------------
-  // SUBMIT COMPLAINT
-  // --------------------------------
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
     setMessage("");
 
-    // ------------------------------
-    // CHECK LOGIN
-    // ------------------------------
     const token = localStorage.getItem("token");
 
     if (!token) {
-      setError(
-        "You are not logged in. Please login first."
-      );
+      navigate("/register");
       return;
     }
 
-    // ------------------------------
-    // VALIDATE DAMAGE TYPE
-    // ------------------------------
     if (!damageType) {
-      setError(
-        "Please select a damage type."
-      );
+      setError("Please select a damage type.");
       return;
     }
 
-    // ------------------------------
-    // VALIDATE IMAGE
-    // ------------------------------
     if (!image) {
-      setError(
-        "Please upload an image of the damaged road."
-      );
+      setError("Please upload an image of the damaged road.");
       return;
     }
 
-    // ------------------------------
-    // VALIDATE LOCATION
-    // ------------------------------
     if (!coordinates) {
-      setError(
-        "Please detect your location before submitting."
-      );
+      setError("Please detect your location before submitting.");
       return;
     }
 
-    // ------------------------------
-    // VALIDATE DESCRIPTION
-    // ------------------------------
     if (!description.trim()) {
-      setError(
-        "Please enter a description."
-      );
+      setError("Please enter a description.");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // ----------------------------
-      // CREATE FORM DATA
-      // ----------------------------
       const formData = new FormData();
 
-      const complaintTitle =
-        getComplaintTitle();
+      formData.append("title", getComplaintTitle());
+      formData.append("description", description.trim());
+      formData.append("damageType", damageType);
+      formData.append("severity", severity);
+      formData.append("latitude", String(coordinates.latitude));
+      formData.append("longitude", String(coordinates.longitude));
+      formData.append("image", image);
 
-      formData.append(
-        "title",
-        complaintTitle
-      );
+      // Include AI results only when detection has succeeded.
+      if (aiResult) {
+        formData.append("aiDetection", JSON.stringify(aiResult));
+      }
 
-      formData.append(
-        "description",
-        description.trim()
-      );
+      const response = await fetch(`${API_URL}/complaints`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
 
-      formData.append(
-        "damageType",
-        damageType
-      );
-
-      formData.append(
-        "severity",
-        severity
-      );
-
-      formData.append(
-        "latitude",
-        String(coordinates.latitude)
-      );
-
-      formData.append(
-        "longitude",
-        String(coordinates.longitude)
-      );
-
-      formData.append(
-        "image",
-        image
-      );
-
-      // ----------------------------
-      // DEBUG INFORMATION
-      // ----------------------------
-      console.log(
-        "Submitting complaint..."
-      );
-
-      console.log(
-        "Title:",
-        complaintTitle
-      );
-
-      console.log(
-        "Damage Type:",
-        damageType
-      );
-
-      console.log(
-        "Severity:",
-        severity
-      );
-
-      console.log(
-        "Latitude:",
-        coordinates.latitude
-      );
-
-      console.log(
-        "Longitude:",
-        coordinates.longitude
-      );
-
-      console.log(
-        "Image:",
-        image.name
-      );
-
-      // ----------------------------
-      // SEND TO BACKEND
-      // ----------------------------
-      const response = await fetch(
-        "http://localhost:5000/api/complaints",
-        {
-          method: "POST",
-
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-
-          body: formData,
-        }
-      );
-
-      // ----------------------------
-      // READ RESPONSE
-      // ----------------------------
       const data = await response.json();
 
-      console.log(
-        "Backend response:",
-        data
-      );
-
-      // ----------------------------
-      // HANDLE ERROR
-      // ----------------------------
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          navigate("/login");
+          return;
+        }
+
         throw new Error(
-          data.message ||
-            "Failed to submit complaint."
+          data.message || "Failed to submit complaint."
         );
       }
 
-      // ----------------------------
-      // SUCCESS
-      // ----------------------------
       setMessage(
-        "Complaint submitted successfully!"
+        aiResult
+          ? "Complaint submitted successfully with AI detection results!"
+          : "Complaint submitted successfully!"
       );
 
-      // Clear form
       setDamageType("");
       setSeverity("Medium");
       setImage(null);
       setLocation("");
       setCoordinates(null);
       setDescription("");
+      setAiResult(null);
+      setAiError("");
 
-      // Reset file input
       event.target.reset();
 
-      // ----------------------------
-      // GO TO COMPLAINTS PAGE
-      // ----------------------------
-      setTimeout(() => {
+      window.setTimeout(() => {
         navigate("/complaints");
       }, 1500);
     } catch (submitError) {
-      console.error(
-        "Complaint submission error:",
-        submitError
-      );
+      console.error("Complaint submission error:", submitError);
 
       setError(
         submitError.message ||
@@ -386,182 +303,167 @@ function ReportDamage() {
 
       <div className="report-container">
         <div className="report-card">
-
           <h1>Report Road Damage</h1>
 
           <p className="report-subtitle">
-            Help improve your community by
-            reporting damaged roads.
+            Help improve your community by reporting damaged roads.
           </p>
 
           <form onSubmit={handleSubmit}>
-
-            {/* ERROR MESSAGE */}
             {error && (
-              <div
-                style={{
-                  backgroundColor: "#ffe6e6",
-                  color: "#b00020",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  marginBottom: "15px",
-                  textAlign: "center",
-                }}
-              >
+              <div className="report-error" role="alert">
                 {error}
               </div>
             )}
 
-            {/* SUCCESS MESSAGE */}
             {message && (
-              <div
-                style={{
-                  backgroundColor: "#e6f7eb",
-                  color: "#146c2e",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  marginBottom: "15px",
-                  textAlign: "center",
-                }}
-              >
+              <div className="report-success" role="status">
                 {message}
               </div>
             )}
 
-            {/* DAMAGE TYPE */}
             <div className="form-group">
-              <label>
-                Damage Type
-              </label>
+              <label htmlFor="damageType">Damage Type</label>
 
               <select
+                id="damageType"
                 value={damageType}
-                onChange={(event) => {
-                  setDamageType(
-                    event.target.value
-                  );
-                  setError("");
-                  setMessage("");
-                }}
+                onChange={(event) => setDamageType(event.target.value)}
                 disabled={submitting}
+                required
               >
-                <option value="">
-                  Select damage type
-                </option>
-
-                <option value="pothole">
-                  Pothole
-                </option>
-
-                <option value="crack">
-                  Road Crack
-                </option>
-
-                <option value="waterlogging">
-                  Waterlogging
-                </option>
-
-                <option value="broken_marking">
-                  Broken Road Marking
-                </option>
-
-                <option value="road_erosion">
-                  Road Erosion
-                </option>
-
-                <option value="surface_damage">
-                  Surface Damage
-                </option>
-
-                <option value="other">
-                  Other
-                </option>
+                <option value="">Select damage type</option>
+                <option value="pothole">Pothole</option>
+                <option value="crack">Road Crack</option>
+                <option value="waterlogging">Waterlogging</option>
+                <option value="broken_marking">Broken Road Marking</option>
+                <option value="road_erosion">Road Erosion</option>
+                <option value="surface_damage">Surface Damage</option>
+                <option value="other">Other</option>
               </select>
             </div>
 
-            {/* SEVERITY */}
             <div className="form-group">
-              <label>
-                Severity
-              </label>
+              <label htmlFor="severity">Reported Severity</label>
 
               <select
+                id="severity"
                 value={severity}
-                onChange={(event) => {
-                  setSeverity(
-                    event.target.value
-                  );
-                  setError("");
-                  setMessage("");
-                }}
+                onChange={(event) => setSeverity(event.target.value)}
                 disabled={submitting}
               >
-                <option value="Low">
-                  Low
-                </option>
-
-                <option value="Medium">
-                  Medium
-                </option>
-
-                <option value="High">
-                  High
-                </option>
-
-                <option value="Critical">
-                  Critical
-                </option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
               </select>
             </div>
 
-            {/* IMAGE */}
             <div className="form-group">
-              <label>
-                Upload Road Image
-              </label>
+              <label htmlFor="roadImage">Upload Road Image</label>
 
               <input
+                id="roadImage"
                 type="file"
-                accept="image/jpeg,image/jpg,image/png"
+                accept="image/jpeg,image/png"
                 onChange={handleImageChange}
-                disabled={submitting}
+                disabled={submitting || detecting}
+                required
               />
 
-              {image && (
+              {image && imagePreview && (
                 <div className="image-preview">
+                  <img src={imagePreview} alt="Selected road damage" />
+                  <p>{image.name}</p>
+                </div>
+              )}
 
-                  <img
-                    src={URL.createObjectURL(
-                      image
-                    )}
-                    alt="Road damage preview"
-                  />
+              <button
+                type="button"
+                className="submit-btn"
+                onClick={handleDetectDamage}
+                disabled={!image || detecting || submitting}
+                style={{ marginTop: "12px" }}
+              >
+                {detecting ? "Analyzing Image..." : "Detect Road Damage with AI"}
+              </button>
+
+              {aiError && (
+                <div className="report-error" role="alert">
+                  {aiError}
+                </div>
+              )}
+
+              {aiResult && (
+                <div
+                  className="ai-result"
+                  style={{
+                    marginTop: "16px",
+                    padding: "16px",
+                    border: "1px solid #d7e3ef",
+                    borderRadius: "10px"
+                  }}
+                >
+                  <h3>AI Detection Results</h3>
 
                   <p>
-                    {image.name}
+                    <strong>Damage detected:</strong>{" "}
+                    {aiResult.damage_detected ? "Yes" : "No"}
                   </p>
 
+                  <p>
+                    <strong>Total detections:</strong>{" "}
+                    {aiResult.total_detections}
+                  </p>
+
+                  {aiResult.detections.length > 0 && (
+                    <ul>
+                      {aiResult.detections.map((detection, index) => (
+                        <li key={`${detection.class}-${index}`}>
+                          {detection.class} —{" "}
+                          {(detection.confidence * 100).toFixed(1)}% confidence
+                          {detection.confidence_label
+                            ? ` (${detection.confidence_label} confidence)`
+                            : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {aiResult.annotated_image && (
+                    <div>
+                      <h4>Annotated Image</h4>
+                      <img
+                        src={`${AI_URL}${aiResult.annotated_image}`}
+                        alt="AI road damage detections"
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          maxWidth: "600px",
+                          height: "auto",
+                          borderRadius: "8px"
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: "13px", color: "#555" }}>
+                    AI predictions are assistive results and should be
+                    reviewed before deciding the actual damage severity.
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* LOCATION */}
             <div className="form-group">
-              <label>
-                Location
-              </label>
+              <label htmlFor="location">Location</label>
 
               <div className="location-input">
-
                 <input
+                  id="location"
                   type="text"
                   value={location}
-                  onChange={(event) => {
-                    setLocation(
-                      event.target.value
-                    );
-                    setError("");
-                  }}
+                  onChange={(event) => setLocation(event.target.value)}
                   placeholder="Enter road location"
                   disabled={submitting}
                 />
@@ -570,87 +472,50 @@ function ReportDamage() {
                   type="button"
                   className="location-btn"
                   onClick={getLocation}
-                  disabled={
-                    locationLoading ||
-                    submitting
-                  }
+                  disabled={locationLoading || submitting}
                 >
                   {locationLoading
                     ? "Detecting..."
                     : "📍 Use My Location"}
                 </button>
-
               </div>
 
-              {/* COORDINATES */}
               {coordinates && (
                 <div className="coordinates">
-
-                  <strong>
-                    Location detected
-                  </strong>
-
-                  <p>
-                    Latitude:{" "}
-                    {coordinates.latitude.toFixed(
-                      6
-                    )}
-                  </p>
-
-                  <p>
-                    Longitude:{" "}
-                    {coordinates.longitude.toFixed(
-                      6
-                    )}
-                  </p>
-
+                  <strong>Location detected</strong>
+                  <p>Latitude: {coordinates.latitude.toFixed(6)}</p>
+                  <p>Longitude: {coordinates.longitude.toFixed(6)}</p>
                 </div>
               )}
             </div>
 
-            {/* DESCRIPTION */}
             <div className="form-group">
-              <label>
-                Description
-              </label>
+              <label htmlFor="description">Description</label>
 
               <textarea
+                id="description"
                 rows="5"
                 value={description}
-                onChange={(event) => {
-                  setDescription(
-                    event.target.value
-                  );
-                  setError("");
-                  setMessage("");
-                }}
+                onChange={(event) => setDescription(event.target.value)}
                 placeholder="Describe the road damage..."
                 disabled={submitting}
-              ></textarea>
+                required
+              />
             </div>
 
-            {/* READY MESSAGE */}
-            {damageType &&
-              image &&
-              coordinates &&
-              description.trim() && (
-                <p className="form-message">
-                  Complaint details are ready
-                  to be submitted.
-                </p>
-              )}
+            {damageType && image && coordinates && description.trim() && (
+              <p className="form-message">
+                Complaint details are ready to be submitted.
+              </p>
+            )}
 
-            {/* SUBMIT BUTTON */}
             <button
               type="submit"
               className="submit-btn"
-              disabled={submitting}
+              disabled={submitting || detecting}
             >
-              {submitting
-                ? "Submitting Complaint..."
-                : "Submit Complaint"}
+              {submitting ? "Submitting Complaint..." : "Submit Complaint"}
             </button>
-
           </form>
         </div>
       </div>

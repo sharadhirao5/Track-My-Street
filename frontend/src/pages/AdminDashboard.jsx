@@ -1,81 +1,10 @@
-
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import "../styles/adminDashboard.css";
 
 const API = "http://localhost:5000/api";
 const STATUSES = ["Pending", "In Progress", "Resolved"];
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#f4f7fb",
-    color: "#172033",
-    fontFamily: "Arial, sans-serif",
-  },
-  header: {
-    background: "#142b4a",
-    color: "#fff",
-    padding: "18px 5%",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "12px",
-  },
-  main: {
-    width: "90%",
-    maxWidth: "1400px",
-    margin: "28px auto",
-  },
-  cards: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-    gap: "16px",
-    margin: "24px 0",
-  },
-  card: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "12px",
-    boxShadow: "0 2px 10px rgba(20,43,74,0.07)",
-  },
-  panel: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "20px",
-    marginTop: "22px",
-    boxShadow: "0 2px 10px rgba(20,43,74,0.07)",
-  },
-  input: {
-    padding: "10px 12px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "7px",
-    background: "#fff",
-    maxWidth: "100%",
-  },
-  button: {
-    padding: "10px 14px",
-    border: "none",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  tableWrap: {
-    overflowX: "auto",
-    width: "100%",
-  },
-  table: {
-    width: "100%",
-    minWidth: "850px",
-    borderCollapse: "collapse",
-    textAlign: "left",
-  },
-  cell: {
-    padding: "12px",
-    borderBottom: "1px solid #e5eaf1",
-    verticalAlign: "top",
-  },
-};
 
 function formatDamageType(value) {
   return (value || "Unknown")
@@ -87,10 +16,17 @@ function formatDate(value) {
   if (!value) return "—";
 
   const date = new Date(value);
-
   return Number.isNaN(date.getTime())
     ? "—"
     : date.toLocaleString();
+}
+
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
 }
 
 function AdminDashboard() {
@@ -107,16 +43,17 @@ function AdminDashboard() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login", { replace: true });
-  };
+  }, [navigate]);
 
   const loadData = useCallback(async () => {
     const token = localStorage.getItem("token");
+    const user = getStoredUser();
 
-    if (!token) {
+    if (!token || user?.role !== "admin") {
       logout();
       return;
     }
@@ -182,18 +119,12 @@ function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    const storedUser = (() => {
-      try {
-        return JSON.parse(localStorage.getItem("user") || "null");
-      } catch {
-        return null;
-      }
-    })();
+    const user = getStoredUser();
 
-    if (!localStorage.getItem("token") || storedUser?.role !== "admin") {
+    if (!localStorage.getItem("token") || user?.role !== "admin") {
       navigate("/login", { replace: true });
       return;
     }
@@ -254,6 +185,7 @@ function AdminDashboard() {
       severityFilter === "All" || complaint.severity === severityFilter;
 
     const query = search.trim().toLowerCase();
+
     const matchesSearch =
       !query ||
       [
@@ -270,109 +202,95 @@ function AdminDashboard() {
   });
 
   const statCards = [
-    ["Total Complaints", statistics?.total ?? "—"],
-    ["Pending", statistics?.pending ?? "—"],
-    ["In Progress", statistics?.inProgress ?? "—"],
-    ["Resolved", statistics?.resolved ?? "—"],
-    ["High / Critical", statistics?.highSeverity ?? "—"],
+    { label: "Total Complaints", value: statistics?.total ?? "—", type: "total" },
+    { label: "Pending", value: statistics?.pending ?? "—", type: "pending" },
+    { label: "In Progress", value: statistics?.inProgress ?? "—", type: "progress" },
+    { label: "Resolved", value: statistics?.resolved ?? "—", type: "resolved" },
+    { label: "High / Critical", value: statistics?.highSeverity ?? "—", type: "severity" },
   ];
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "24px" }}>
-            Track My Street
-          </h1>
-          <p style={{ margin: "6px 0 0", opacity: 0.85 }}>
-            Admin Dashboard
-          </p>
-        </div>
+    <div className="admin-page">
+      <Navbar />
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button
-            style={{ ...styles.button, background: "#fff", color: "#142b4a" }}
-            onClick={loadData}
-            disabled={loading}
-          >
-            Refresh
-          </button>
+      <main className="admin-main">
+        <section className="admin-heading">
+          <div>
+            <p className="admin-eyebrow">ADMINISTRATION</p>
+            <h1>Admin Dashboard</h1>
+            <p className="admin-subtitle">
+              Monitor road damage reports and manage complaint progress.
+            </p>
+          </div>
 
-          <button
-            style={{ ...styles.button, background: "#b42318", color: "#fff" }}
-            onClick={logout}
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+          <div className="admin-heading-actions">
+            <button
+              className="admin-button admin-button-primary"
+              onClick={loadData}
+              disabled={loading}
+            >
+              {loading ? "Refreshing..." : "↻ Refresh"}
+            </button>
 
-      <main style={styles.main}>
-        <h2>Overview</h2>
-        <p>Review reports and manage complaint progress.</p>
+            <button
+              className="admin-button admin-button-danger"
+              onClick={logout}
+            >
+              Logout
+            </button>
+          </div>
+        </section>
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              background: "#fee2e2",
-              color: "#991b1b",
-              padding: "12px",
-              borderRadius: "8px",
-              marginTop: "16px",
-            }}
-          >
+          <div className="admin-alert admin-alert-error" role="alert">
             {error}
           </div>
         )}
 
         {message && (
-          <div
-            role="status"
-            style={{
-              background: "#dcfce7",
-              color: "#166534",
-              padding: "12px",
-              borderRadius: "8px",
-              marginTop: "16px",
-            }}
-          >
+          <div className="admin-alert admin-alert-success" role="status">
             {message}
           </div>
         )}
 
-        <section style={styles.cards}>
-          {statCards.map(([label, value]) => (
-            <div key={label} style={styles.card}>
-              <p style={{ color: "#64748b", marginTop: 0 }}>{label}</p>
-              <h2 style={{ marginBottom: 0, fontSize: "30px" }}>{value}</h2>
-            </div>
+        <section className="admin-stats">
+          {statCards.map((item) => (
+            <article
+              className={`admin-stat-card admin-stat-${item.type}`}
+              key={item.label}
+            >
+              <p>{item.label}</p>
+              <h2>{item.value}</h2>
+            </article>
           ))}
         </section>
 
-        <section style={styles.panel}>
-          <h2 style={{ marginTop: 0 }}>Complaint Management</h2>
+        <section className="admin-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <h2>Complaint Management</h2>
+              <p>Search reports, filter results and update complaint status.</p>
+            </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px",
-              marginBottom: "20px",
-            }}
-          >
+            <span className="admin-result-count">
+              {filteredComplaints.length} complaints
+            </span>
+          </div>
+
+          <div className="admin-filters">
             <input
-              style={styles.input}
               type="search"
-              placeholder="Search complaints or citizens"
+              className="admin-input admin-search"
+              placeholder="Search complaints or citizens..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
 
             <select
-              style={styles.input}
+              className="admin-input"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Filter by status"
             >
               <option value="All">All statuses</option>
               {STATUSES.map((status) => (
@@ -383,9 +301,10 @@ function AdminDashboard() {
             </select>
 
             <select
-              style={styles.input}
+              className="admin-input"
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
+              aria-label="Filter by severity"
             >
               <option value="All">All severities</option>
               {["Low", "Medium", "High", "Critical"].map((severity) => (
@@ -397,14 +316,14 @@ function AdminDashboard() {
           </div>
 
           {loading ? (
-            <p>Loading complaints...</p>
+            <p className="admin-empty">Loading complaints...</p>
           ) : filteredComplaints.length === 0 ? (
-            <p>No complaints match your filters.</p>
+            <p className="admin-empty">No complaints match your filters.</p>
           ) : (
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
                 <thead>
-                  <tr style={{ background: "#f8fafc" }}>
+                  <tr>
                     {[
                       "Complaint",
                       "Citizen",
@@ -415,9 +334,7 @@ function AdminDashboard() {
                       "Status",
                       "Action",
                     ].map((heading) => (
-                      <th key={heading} style={styles.cell}>
-                        {heading}
-                      </th>
+                      <th key={heading}>{heading}</th>
                     ))}
                   </tr>
                 </thead>
@@ -425,38 +342,40 @@ function AdminDashboard() {
                 <tbody>
                   {filteredComplaints.map((complaint) => (
                     <tr key={complaint._id}>
-                      <td style={styles.cell}>
+                      <td>
                         <strong>{complaint.title || "Untitled"}</strong>
-                        <p style={{ marginBottom: 0, maxWidth: "240px" }}>
+                        <p className="admin-description">
                           {complaint.description || ""}
                         </p>
                       </td>
 
-                      <td style={styles.cell}>
-                        {complaint.user?.name || "Unknown"}
-                        <br />
+                      <td>
+                        <strong>{complaint.user?.name || "Unknown"}</strong>
                         <small>{complaint.user?.email || ""}</small>
                       </td>
 
-                      <td style={styles.cell}>
-                        {formatDamageType(complaint.damageType)}
+                      <td>{formatDamageType(complaint.damageType)}</td>
+
+                      <td>
+                        <span
+                          className={`admin-severity admin-severity-${(
+                            complaint.severity || "unknown"
+                          ).toLowerCase()}`}
+                        >
+                          {complaint.severity || "—"}
+                        </span>
                       </td>
 
-                      <td style={styles.cell}>
-                        {complaint.severity || "—"}
+                      <td>
+                        {complaint.latitude ?? "—"},{" "}
+                        {complaint.longitude ?? "—"}
                       </td>
 
-                      <td style={styles.cell}>
-                        {complaint.latitude}, {complaint.longitude}
-                      </td>
+                      <td>{formatDate(complaint.createdAt)}</td>
 
-                      <td style={styles.cell}>
-                        {formatDate(complaint.createdAt)}
-                      </td>
-
-                      <td style={styles.cell}>
+                      <td>
                         <select
-                          style={styles.input}
+                          className="admin-input admin-status-select"
                           value={
                             selectedStatuses[complaint._id] ||
                             complaint.status
@@ -467,7 +386,7 @@ function AdminDashboard() {
                               [complaint._id]: e.target.value,
                             }))
                           }
-                          aria-label={`Status for ${complaint.title}`}
+                          aria-label={`Status for ${complaint.title || "complaint"}`}
                         >
                           {STATUSES.map((status) => (
                             <option key={status} value={status}>
@@ -477,13 +396,9 @@ function AdminDashboard() {
                         </select>
                       </td>
 
-                      <td style={styles.cell}>
+                      <td>
                         <button
-                          style={{
-                            ...styles.button,
-                            background: "#2563eb",
-                            color: "#fff",
-                          }}
+                          className="admin-button admin-button-primary admin-update-button"
                           disabled={
                             updatingId === complaint._id ||
                             (selectedStatuses[complaint._id] ||
@@ -504,19 +419,30 @@ function AdminDashboard() {
           )}
         </section>
 
-        <section style={styles.panel}>
-          <h2 style={{ marginTop: 0 }}>Complaints by Damage Type</h2>
+        <section className="admin-panel admin-damage-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <h2>Complaints by Damage Type</h2>
+              <p>Breakdown of reported road damage.</p>
+            </div>
+          </div>
 
           {!statistics?.byDamageType?.length ? (
-            <p>No damage-type statistics available.</p>
+            <p className="admin-empty">
+              No damage-type statistics available.
+            </p>
           ) : (
-            <ul>
+            <div className="admin-damage-list">
               {statistics.byDamageType.map((item) => (
-                <li key={item._id || "unknown"}>
-                  {formatDamageType(item._id)}: {item.count}
-                </li>
+                <div
+                  className="admin-damage-item"
+                  key={item._id || "unknown"}
+                >
+                  <span>{formatDamageType(item._id)}</span>
+                  <strong>{item.count}</strong>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </main>

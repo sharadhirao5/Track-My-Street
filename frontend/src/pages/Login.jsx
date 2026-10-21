@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../styles/login.css";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,6 +56,15 @@ function Login() {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+
+      // A citizen who tried to open a protected page goes there after login.
+      if (
+        data.user.role === "citizen" &&
+        location.state?.from === "/report"
+      ) {
+        navigate("/report", { replace: true });
+        return;
+      }
 
       switch (data.user.role) {
         case "admin":

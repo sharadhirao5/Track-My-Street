@@ -1,4 +1,3 @@
-import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 function getStoredUser() {
@@ -28,16 +27,18 @@ function ProtectedRoute({ allowedRole, children }) {
   const token = localStorage.getItem("token");
   const user = getStoredUser();
 
+  // No login information: ask the user to register first.
   if (!token || !user || !user.role) {
     return (
       <Navigate
-        to="/login"
+        to="/register"
         replace
         state={{ from: location.pathname }}
       />
     );
   }
 
+  // Prevent users from opening another role's dashboard.
   if (allowedRole && user.role !== allowedRole) {
     return <Navigate to={getHomeForRole(user.role)} replace />;
   }
