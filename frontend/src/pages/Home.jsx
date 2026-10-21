@@ -28,7 +28,7 @@ function Home() {
               Report Damage
             </Link>
 
-            <Link to="/login" className="btn-secondary">
+            <Link to="/view-complaint" className="btn-secondary">
               View Complaints
             </Link>
           </div>
@@ -62,29 +62,37 @@ function Home() {
       </section>
 
       <section className="features">
-        <div className="card">
-          <FaCamera className="icon" />
-          <h3>Upload Image</h3>
-          <p>Upload a road image for AI analysis.</p>
-        </div>
+        <Link to="/report" className="feature-link">
+          <div className="card">
+            <FaCamera className="icon" />
+            <h3>Upload Image</h3>
+            <p>Upload a road image for AI analysis.</p>
+          </div>
+        </Link>
 
-        <div className="card">
-          <FaRobot className="icon" />
-          <h3>AI Detection</h3>
-          <p>Detect potholes and road cracks automatically.</p>
-        </div>
+        <Link to="/report" className="feature-link">
+          <div className="card">
+            <FaRobot className="icon" />
+            <h3>AI Detection</h3>
+            <p>Detect potholes and road cracks automatically.</p>
+          </div>
+        </Link>
 
-        <div className="card">
-          <FaMapMarkedAlt className="icon" />
-          <h3>GPS Location</h3>
-          <p>Capture the exact location of road damage.</p>
-        </div>
+        <Link to="/report" className="feature-link">
+          <div className="card">
+            <FaMapMarkedAlt className="icon" />
+            <h3>GPS Location</h3>
+            <p>Capture the exact location of road damage.</p>
+          </div>
+        </Link>
 
-        <div className="card">
-          <FaClipboardList className="icon" />
-          <h3>Complaint Tracking</h3>
-          <p>Track complaint status in real time.</p>
-        </div>
+        <Link to="/dashboard" className="feature-link">
+          <div className="card">
+            <FaClipboardList className="icon" />
+            <h3>Complaint Tracking</h3>
+            <p>Track complaint status in real time.</p>
+          </div>
+        </Link>
       </section>
 
       <footer className="footer">

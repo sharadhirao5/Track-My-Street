@@ -206,3 +206,17 @@
         transform: translateY(0);
     }
 }
+.feature-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.feature-link .card {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.feature-link:hover .card {
+    transform: translateY(-8px);
+}
