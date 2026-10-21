@@ -1,0 +1,10 @@
+path: dataset
+
+train: train/images
+val: valid/images
+test: test/images
+
+names:
+  0: pothole
+  1: crack
+  2: waterlogging

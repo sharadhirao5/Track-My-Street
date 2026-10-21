@@ -1,5 +1,7 @@
+
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import "../styles/profile.css";
 import {
   FaUser,
   FaEnvelope,
@@ -8,56 +10,106 @@ import {
   FaCheckCircle,
   FaClock,
   FaEdit,
+  FaSignOutAlt,
 } from "react-icons/fa";
+import "../styles/profile.css";
 
 function Profile() {
-  const user = {
-    name: "Vaishnavi Vinod",
-    email: "vaishnavi@example.com",
-    phone: "+91 9876543210",
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+
+    if (!storedUser) return;
+
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch (error) {
+      console.error("Error reading user information:", error);
+      localStorage.removeItem("user");
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login", { replace: true });
   };
+
+  if (!user) {
+    return (
+      <>
+        <Navbar />
+
+        <main className="profile-page">
+          <section className="profile-header">
+            <p className="profile-label">MY PROFILE</p>
+            <h1>Account Profile</h1>
+            <p>Please log in to view your account information.</p>
+          </section>
+
+          <div className="profile-content">
+            <Link to="/login" className="edit-profile-btn">
+              Go to Login
+            </Link>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  const name = user.name || user.fullName || "User";
+  const email = user.email || "Not provided";
+  const phone = user.phone || user.phoneNumber || "Not provided";
+
+  const role = user.role
+    ? String(user.role).charAt(0).toUpperCase() +
+      String(user.role).slice(1)
+    : "Citizen";
 
   return (
     <>
       <Navbar />
 
       <main className="profile-page">
-
         <section className="profile-header">
           <p className="profile-label">MY PROFILE</p>
-
           <h1>Account Profile</h1>
-
-          <p>
-            Manage your Track My Street account information.
-          </p>
+          <p>Manage your Track My Street account information.</p>
         </section>
 
-
         <section className="profile-content">
-
           <div className="profile-card">
-
             <div className="profile-avatar">
               <FaUser />
             </div>
 
-            <h2>{user.name}</h2>
+            <h2>{name}</h2>
+            <p className="profile-role">{role}</p>
 
-            <p className="profile-role">
-              Citizen
-            </p>
-
-            <button className="edit-profile-btn">
-              <FaEdit />
-              Edit Profile
+            <button
+              type="button"
+              className="edit-profile-btn"
+              onClick={() =>
+                window.alert(
+                  "Profile editing is not available yet."
+                )
+              }
+            >
+              <FaEdit /> Edit Profile
             </button>
 
+            <button
+              type="button"
+              className="edit-profile-btn"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt /> Log Out
+            </button>
           </div>
 
-
           <div className="profile-details">
-
             <h2>Personal Information</h2>
 
             <div className="detail-item">
@@ -67,10 +119,9 @@ function Profile() {
 
               <div>
                 <span>Full Name</span>
-                <strong>{user.name}</strong>
+                <strong>{name}</strong>
               </div>
             </div>
-
 
             <div className="detail-item">
               <div className="detail-icon">
@@ -79,10 +130,9 @@ function Profile() {
 
               <div>
                 <span>Email Address</span>
-                <strong>{user.email}</strong>
+                <strong>{email}</strong>
               </div>
             </div>
-
 
             <div className="detail-item">
               <div className="detail-icon">
@@ -91,48 +141,38 @@ function Profile() {
 
               <div>
                 <span>Phone Number</span>
-                <strong>{user.phone}</strong>
+                <strong>{phone}</strong>
               </div>
             </div>
 
-          </div>
+            <div className="detail-item">
+              <div className="detail-icon">
+                <FaUser />
+              </div>
 
+              <div>
+                <span>Account Role</span>
+                <strong>{role}</strong>
+              </div>
+            </div>
+
+            <div className="profile-quick-links">
+              <h2>My Activity</h2>
+
+              <Link to="/complaints">
+                <FaClipboardList /> My Complaints
+              </Link>
+
+              <Link to="/notifications">
+                <FaClock /> Notifications
+              </Link>
+
+              <Link to="/dashboard">
+                <FaCheckCircle /> Dashboard
+              </Link>
+            </div>
+          </div>
         </section>
-
-
-        <section className="profile-statistics">
-
-          <div className="profile-stat">
-            <FaClipboardList />
-
-            <div>
-              <h2>12</h2>
-              <p>Total Complaints</p>
-            </div>
-          </div>
-
-
-          <div className="profile-stat">
-            <FaCheckCircle />
-
-            <div>
-              <h2>7</h2>
-              <p>Resolved</p>
-            </div>
-          </div>
-
-
-          <div className="profile-stat">
-            <FaClock />
-
-            <div>
-              <h2>5</h2>
-              <p>Pending</p>
-            </div>
-          </div>
-
-        </section>
-
       </main>
     </>
   );

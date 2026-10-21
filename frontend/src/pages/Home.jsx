@@ -1,6 +1,7 @@
+
 import Navbar from "../components/Navbar";
 import "../styles/home.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import heroImg from "../assets/hero-road.png";
 import {
   FaCamera,
@@ -10,6 +11,22 @@ import {
 } from "react-icons/fa";
 
 function Home() {
+  const navigate = useNavigate();
+
+  const isLoggedIn = () => {
+    return Boolean(
+      localStorage.getItem("token") && localStorage.getItem("user")
+    );
+  };
+
+  const handleReportClick = () => {
+    navigate(isLoggedIn() ? "/report" : "/login");
+  };
+
+  const handleComplaintsClick = () => {
+    navigate(isLoggedIn() ? "/complaints" : "/login");
+  };
+
   return (
     <>
       <Navbar />
@@ -17,20 +34,27 @@ function Home() {
       <section className="hero">
         <div className="hero-left">
           <h1>AI Powered Road Damage Detection</h1>
-
           <p>
             Detect potholes, road cracks and damaged roads using Artificial
             Intelligence and report them instantly with GPS location.
           </p>
 
           <div className="hero-buttons">
-            <Link to="/report" className="btn-primary">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleReportClick}
+            >
               Report Damage
-            </Link>
+            </button>
 
-            <Link to="/view-complaint" className="btn-secondary">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleComplaintsClick}
+            >
               View Complaints
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -44,17 +68,14 @@ function Home() {
           <h2>1200+</h2>
           <p>Complaints Reported</p>
         </div>
-
         <div className="stat-box">
           <h2>850+</h2>
           <p>Resolved Cases</p>
         </div>
-
         <div className="stat-box">
           <h2>98%</h2>
           <p>AI Detection Accuracy</p>
         </div>
-
         <div className="stat-box">
           <h2>25+</h2>
           <p>Cities Covered</p>
@@ -97,16 +118,16 @@ function Home() {
 
       <footer className="footer">
         <h2>Track My Street</h2>
-
         <p>
-          AI Powered Road Damage Detection & Smart Complaint Management System
+          AI Powered Road Damage Detection &amp; Smart Complaint Management
+          System
         </p>
 
         <div className="footer-links">
-          <a href="#">Home</a>
-          <a href="#">Login</a>
-          <a href="#">Register</a>
-          <a href="#">Contact</a>
+          <Link to="/">Home</Link>
+          <Link to="/login">Login</Link>
+          <Link to="/register">Register</Link>
+          <a href="mailto:support@trackmystreet.example">Contact</a>
         </div>
 
         <p className="copyright">

@@ -1,59 +1,132 @@
+
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../styles/register.css";
 
+const initialForm = {
+  name: "",
+  email: "",
+  phone: "",
+  password: "",
+  confirmPassword: "",
+  role: "citizen",
+  adminRegistrationSecret: "",
+};
+
 function Register() {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleRegister = (event) => {
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    setError("");
+    setSuccess("");
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    setSuccess("");
 
-    setMessage("");
-    setMessageType("");
-
-    if (!fullName || !email || !phone || !password || !confirmPassword) {
-      setMessage("Please fill in all the fields.");
-      setMessageType("error");
-      return;
-    }
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
-      setMessage("Please enter a valid email address.");
-      setMessageType("error");
-      return;
-    }
-    if (phone.length >10) {
-      setMessage("Phone number must be 10 digits.");
-      setMessageType("error");
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim() ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
+      setError("Please fill in all required fields.");
       return;
     }
 
-    if (password.length < 6) {
-      setMessage("Password must be at least 6 characters long.");
-      setMessageType("error");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setError("Please enter a valid email address.");
       return;
     }
 
-    if (password !== confirmPassword) {
-      setMessage("Passwords do not match.");
-      setMessageType("error");
+    if (!/^[0-9]{10}$/.test(formData.phone.trim())) {
+      setError("Phone number must contain exactly 10 digits.");
       return;
     }
 
-    setMessage("Account created successfully!");
-    setMessageType("success");
+    if (formData.password.length < 6) {
+      setError("Password must contain at least 6 characters.");
+      return;
+    }
 
-    setFullName("");
-    setEmail("");
-    setPhone("");
-    setPassword("");
-    setConfirmPassword("");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (
+      formData.role === "admin" &&
+      !formData.adminRegistrationSecret.trim()
+    ) {
+      setError("Admin authorization code is required.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            password: formData.password,
+            role: formData.role,
+            ...(formData.role === "admin"
+              ? {
+                  adminRegistrationSecret:
+                    formData.adminRegistrationSecret,
+                }
+              : {}),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Registration failed. Please try again."
+        );
+      }
+
+      setSuccess(
+        "Account created successfully! Redirecting to login..."
+      );
+      setFormData(initialForm);
+
+      window.setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to connect to the server. Check that the backend is running."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,50 +137,130 @@ function Register() {
         <div className="register-card">
           <h2>Create Account</h2>
 
-          <form onSubmit={handleRegister}>
+          {error && (
+            <p className="register-message error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {success && (
+            <p className="register-message success" role="status">
+              {success}
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit}>
             <input
               type="text"
+              name="name"
               placeholder="Full Name"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              autoComplete="name"
+              value={formData.name}
+              onChange={handleChange}
+              disabled={loading}
+              required
             />
 
             <input
               type="email"
+              name="email"
               placeholder="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              value={formData.email}
+              onChange={handleChange}
+              disabled={loading}
+              required
             />
 
             <input
-              type="text"
+              type="tel"
+              name="phone"
               placeholder="Phone Number"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              autoComplete="tel"
+              value={formData.phone}
+              onChange={handleChange}
+              disabled={loading}
+              required
             />
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <label htmlFor="role">Register As</label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              disabled={loading}
+            >
+              <option value="citizen">Citizen</option>
+              <option value="admin">Admin</option>
+            </select>
 
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-
-            {message && (
-              <p className={`register-message ${messageType}`}>
-                {message}
-              </p>
+            {formData.role === "admin" && (
+              <>
+                <label htmlFor="adminRegistrationSecret">
+                  Admin Authorization Code
+                </label>
+                <input
+                  id="adminRegistrationSecret"
+                  type="password"
+                  name="adminRegistrationSecret"
+                  placeholder="Enter authorization code"
+                  value={formData.adminRegistrationSecret}
+                  onChange={handleChange}
+                  disabled={loading}
+                  required
+                />
+                <p>
+                  Administrator registration requires a valid
+                  server-configured authorization code.
+                </p>
+              </>
             )}
 
-            <button type="submit">Create Account</button>
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              autoComplete="new-password"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
+
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              autoComplete="new-password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
+
+            <button type="submit" disabled={loading}>
+              {loading ? "Creating Account..." : "Create Account"}
+            </button>
           </form>
+
+          <p style={{ textAlign: "center", marginTop: "15px" }}>
+            Already have an account?{" "}
+            <button
+              type="button"
+              onClick={() => !loading && navigate("/login")}
+              disabled={loading}
+              style={{
+                border: "none",
+                background: "none",
+                color: "#2563eb",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Login
+            </button>
+          </p>
         </div>
       </div>
     </>
