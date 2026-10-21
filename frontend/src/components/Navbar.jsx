@@ -1,40 +1,26 @@
-import { Link } from "react-router-dom";
+
+import { Link, NavLink } from "react-router-dom";
 import "../styles/navbar.css";
 
 function Navbar() {
   return (
     <nav className="navbar">
       <Link to="/" className="logo">
-        🚧 Track My Street
+        <span aria-hidden="true">🚧</span> Track My Street
       </Link>
 
       <ul className="nav-links">
         <li>
-          <Link to="/">Home</Link>
+          <NavLink to="/" end>Home</NavLink>
         </li>
-
         <li>
-          <Link to="/dashboard">Dashboard</Link>
+          <NavLink to="/dashboard">Dashboard</NavLink>
         </li>
-
         <li>
-          <Link to="/report">Report Damage</Link>
+          <NavLink to="/login">Login</NavLink>
         </li>
-
         <li>
-          <Link to="/complaints">My Complaints</Link>
-        </li>
-
-        <li>
-          <Link to="/profile">Profile</Link>
-        </li>
-
-        <li>
-          <Link to="/login">Login</Link>
-        </li>
-
-        <li>
-          <Link to="/register">Register</Link>
+          <NavLink to="/register">Register</NavLink>
         </li>
       </ul>
     </nav>

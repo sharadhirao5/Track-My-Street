@@ -6,6 +6,8 @@ import "../styles/reportDamage.css";
 
 const API_URL = "http://localhost:5000/api";
 const AI_URL = "http://localhost:5001";
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 
 function ReportDamage() {
   const navigate = useNavigate();
@@ -45,19 +47,16 @@ function ReportDamage() {
     setAiError("");
     setAiResult(null);
 
-    if (!selectedImage) {
-      setImage(null);
-      return;
-    }
+    if (!selectedImage) return;
 
-    if (!["image/jpeg", "image/png"].includes(selectedImage.type)) {
+    if (!ALLOWED_IMAGE_TYPES.includes(selectedImage.type)) {
       setError("Only JPG, JPEG, and PNG images are allowed.");
       event.target.value = "";
       setImage(null);
       return;
     }
 
-    if (selectedImage.size > 5 * 1024 * 1024) {
+    if (selectedImage.size > MAX_IMAGE_SIZE) {
       setError("Image size must be less than 5 MB.");
       event.target.value = "";
       setImage(null);
@@ -65,6 +64,19 @@ function ReportDamage() {
     }
 
     setImage(selectedImage);
+  };
+
+  const removeImage = () => {
+    setImage(null);
+    setAiResult(null);
+    setAiError("");
+    setMessage("");
+
+    const cameraInput = document.getElementById("roadImageCamera");
+    const galleryInput = document.getElementById("roadImageGallery");
+
+    if (cameraInput) cameraInput.value = "";
+    if (galleryInput) galleryInput.value = "";
   };
 
   const getLocation = () => {
@@ -131,7 +143,7 @@ function ReportDamage() {
     setAiResult(null);
 
     if (!image) {
-      setAiError("Please select a road image first.");
+      setError("Please take a photo or select a road image first.");
       return;
     }
 
@@ -149,7 +161,9 @@ function ReportDamage() {
       const data = await response.json();
 
       if (!response.ok || !data.success || !data.result) {
-        throw new Error(data.error || "AI detection failed. Please try again.");
+        throw new Error(
+          data.error || "AI detection failed. Please try again."
+        );
       }
 
       const result = data.result;
@@ -162,9 +176,23 @@ function ReportDamage() {
         throw new Error("The AI service returned an unexpected response.");
       }
 
+      if (
+        result.damage_detected !== true ||
+        result.total_detections <= 0 ||
+        result.detections.length === 0
+      ) {
+        setAiResult(null);
+        setAiError(
+          "No road damage was detected. Please upload a clear image showing a pothole or other supported road damage."
+        );
+        return;
+      }
+
       setAiResult(result);
+      setMessage("Road damage detected. Please review the AI results.");
     } catch (detectionError) {
       console.error("AI detection error:", detectionError);
+
       setAiError(
         detectionError.message ||
           "Unable to connect to the AI service. Check that Flask is running on port 5001."
@@ -192,7 +220,21 @@ function ReportDamage() {
     }
 
     if (!image) {
-      setError("Please upload an image of the damaged road.");
+      setError("Please take a photo or upload an image of the damaged road.");
+      return;
+    }
+
+    if (
+      !aiResult ||
+      aiResult.damage_detected !== true ||
+      !Number.isInteger(aiResult.total_detections) ||
+      aiResult.total_detections <= 0 ||
+      !Array.isArray(aiResult.detections) ||
+      aiResult.detections.length === 0
+    ) {
+      setError(
+        "Please run AI detection and upload an image with detected road damage before submitting."
+      );
       return;
     }
 
@@ -219,10 +261,7 @@ function ReportDamage() {
       formData.append("longitude", String(coordinates.longitude));
       formData.append("location", location);
       formData.append("image", image);
-
-      if (aiResult) {
-        formData.append("aiDetection", JSON.stringify(aiResult));
-      }
+      formData.append("aiDetection", JSON.stringify(aiResult));
 
       const response = await fetch(`${API_URL}/complaints`, {
         method: "POST",
@@ -245,11 +284,7 @@ function ReportDamage() {
         throw new Error(data.message || "Failed to submit complaint.");
       }
 
-      setMessage(
-        aiResult
-          ? "Complaint submitted successfully with AI detection results!"
-          : "Complaint submitted successfully!"
-      );
+      setMessage("Complaint submitted successfully with AI detection results!");
 
       setDamageType("");
       setSeverity("Medium");
@@ -260,7 +295,11 @@ function ReportDamage() {
       setAiResult(null);
       setAiError("");
 
-      event.target.reset();
+      const cameraInput = document.getElementById("roadImageCamera");
+      const galleryInput = document.getElementById("roadImageGallery");
+
+      if (cameraInput) cameraInput.value = "";
+      if (galleryInput) galleryInput.value = "";
 
       window.setTimeout(() => {
         navigate("/complaints");
@@ -279,9 +318,20 @@ function ReportDamage() {
     <>
       <Navbar />
 
+      <div className="back-button-wrapper">
+  <button
+    type="button"
+    className="back-button"
+    onClick={() => navigate("/dashboard")}
+  >
+    ← Back to Dashboard
+  </button>
+</div>
+
       <div className="report-container">
         <div className="report-card">
           <h1>Report Road Damage</h1>
+
           <p className="report-subtitle">
             Help improve your community by reporting damaged roads.
           </p>
@@ -295,6 +345,22 @@ function ReportDamage() {
           {message && (
             <div className="report-success" role="status">
               {message}
+            </div>
+          )}
+
+          {aiError && (
+            <div
+              role="alert"
+              style={{
+                color: "#b00020",
+                backgroundColor: "#ffe6e6",
+                border: "1px solid #f5b5b5",
+                borderRadius: "8px",
+                padding: "12px",
+                marginBottom: "15px",
+              }}
+            >
+              {aiError}
             </div>
           )}
 
@@ -335,20 +401,47 @@ function ReportDamage() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="roadImage">Upload Road Image</label>
+              <label htmlFor="roadImageCamera">
+                Take a Road Photo Using Camera
+              </label>
+
               <input
-                id="roadImage"
+                id="roadImageCamera"
+                type="file"
+                accept="image/jpeg,image/png"
+                capture="environment"
+                onChange={handleImageChange}
+                disabled={submitting || detecting}
+              />
+
+              <label
+                htmlFor="roadImageGallery"
+                style={{ display: "block", marginTop: "16px" }}
+              >
+                Or Upload from Gallery / Computer
+              </label>
+
+              <input
+                id="roadImageGallery"
                 type="file"
                 accept="image/jpeg,image/png"
                 onChange={handleImageChange}
                 disabled={submitting || detecting}
-                required
               />
 
               {image && imagePreview && (
                 <div className="image-preview">
                   <img src={imagePreview} alt="Selected road damage" />
                   <p>{image.name}</p>
+
+                  <button
+                    type="button"
+                    className="location-btn"
+                    onClick={removeImage}
+                    disabled={submitting || detecting}
+                  >
+                    Remove Image
+                  </button>
                 </div>
               )}
 
@@ -359,14 +452,10 @@ function ReportDamage() {
                 disabled={!image || detecting || submitting}
                 style={{ marginTop: "12px" }}
               >
-                {detecting ? "Analyzing Image..." : "Detect Road Damage with AI"}
+                {detecting
+                  ? "Analyzing Image..."
+                  : "Detect Road Damage with AI"}
               </button>
-
-              {aiError && (
-                <div className="report-error" role="alert">
-                  {aiError}
-                </div>
-              )}
 
               {aiResult && (
                 <div
@@ -379,10 +468,12 @@ function ReportDamage() {
                   }}
                 >
                   <h3>AI Detection Results</h3>
+
                   <p>
                     <strong>Damage detected:</strong>{" "}
                     {aiResult.damage_detected ? "Yes" : "No"}
                   </p>
+
                   <p>
                     <strong>Total detections:</strong>{" "}
                     {aiResult.total_detections}
@@ -393,9 +484,7 @@ function ReportDamage() {
                       {aiResult.detections.map((detection, index) => (
                         <li key={`${detection.class}-${index}`}>
                           {detection.class} —{" "}
-                          {(
-                            Number(detection.confidence || 0) * 100
-                          ).toFixed(1)}
+                          {(Number(detection.confidence || 0) * 100).toFixed(1)}
                           % confidence
                           {detection.confidence_label
                             ? ` (${detection.confidence_label} confidence)`
@@ -432,6 +521,7 @@ function ReportDamage() {
 
             <div className="form-group">
               <label htmlFor="location">Location</label>
+
               <div className="location-input">
                 <input
                   id="location"
@@ -441,13 +531,16 @@ function ReportDamage() {
                   placeholder="Enter road location"
                   disabled={submitting}
                 />
+
                 <button
                   type="button"
                   className="location-btn"
                   onClick={getLocation}
                   disabled={locationLoading || submitting}
                 >
-                  {locationLoading ? "Detecting..." : "Use My Location"}
+                  {locationLoading
+                    ? "Detecting..."
+                    : "📍 Use My Location"}
                 </button>
               </div>
 
@@ -472,6 +565,16 @@ function ReportDamage() {
                 required
               />
             </div>
+
+            {damageType &&
+              image &&
+              aiResult?.damage_detected === true &&
+              coordinates &&
+              description.trim() && (
+                <p className="form-message">
+                  Complaint details are ready to be submitted.
+                </p>
+              )}
 
             <button
               type="submit"

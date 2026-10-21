@@ -42,6 +42,16 @@ function Profile() {
       <>
         <Navbar />
 
+        <div className="back-button-wrapper">
+  <button
+    type="button"
+    className="back-button"
+    onClick={() => navigate("/dashboard")}
+  >
+    ← Back to Dashboard
+  </button>
+</div>
+
         <main className="profile-page">
           <section className="profile-header">
             <p className="profile-label">MY PROFILE</p>
@@ -71,6 +81,13 @@ function Profile() {
   return (
     <>
       <Navbar />
+      
+<div className="back-button-wrapper">
+  <button className="back-button" onClick={() => navigate("/dashboard")}>
+    ← Back to Dashboard
+  </button>
+</div>
+  
 
       <main className="profile-page">
         <section className="profile-header">

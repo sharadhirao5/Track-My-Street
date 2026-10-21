@@ -1,11 +1,12 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../styles/login.css";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,20 +58,41 @@ function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      switch (data.user.role) {
-        case "admin":
-          navigate("/admin", { replace: true });
-          break;
+      // Admins go to the Admin Dashboard.
+      if (data.user.role === "admin") {
+        navigate("/admin", { replace: true });
+        return;
+      }
 
-        case "authority":
-          navigate("/authority", { replace: true });
-          break;
+      // Authorities go to the Authority Dashboard.
+      if (data.user.role === "authority") {
+        navigate("/authority", { replace: true });
+        return;
+      }
 
-        default:
-          navigate("/dashboard", { replace: true });
+      // Citizens return to their requested page when appropriate.
+      // Otherwise, they go to the Home page.
+      const requestedPath = location.state?.from;
+
+      const allowedCitizenPaths = [
+        "/dashboard",
+        "/report",
+        "/complaints",
+        "/notifications",
+        "/profile",
+      ];
+
+      if (
+        typeof requestedPath === "string" &&
+        allowedCitizenPaths.includes(requestedPath)
+      ) {
+        navigate(requestedPath, { replace: true });
+      } else {
+        navigate("/", { replace: true });
       }
     } catch (err) {
       console.error("Login error:", err);
+
       setError(
         err.message ||
           "Unable to connect to the server. Check that the backend is running."
@@ -130,13 +152,16 @@ function Login() {
             Don't have an account?{" "}
             <button
               type="button"
-              onClick={() => navigate("/register")}
+              onClick={() => !loading && navigate("/register")}
+              disabled={loading}
               style={{
                 border: "none",
                 background: "none",
                 color: "#2563eb",
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 fontWeight: "600",
+                padding: 0,
+                fontSize: "inherit",
               }}
             >
               Register

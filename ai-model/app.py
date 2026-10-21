@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, send_from_directory
 from ai_service import detect_potholes
 from werkzeug.utils import secure_filename
@@ -6,8 +7,6 @@ import uuid
 
 app = Flask(__name__)
 
-# Use paths relative to this file so the service works
-# regardless of the terminal's current directory.
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_FOLDER = BASE_DIR / "uploads"
 RESULT_FOLDER = UPLOAD_FOLDER / "results"
@@ -15,7 +14,8 @@ RESULT_FOLDER = UPLOAD_FOLDER / "results"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 RESULT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-# Allow the local React development server.
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 ALLOWED_ORIGINS = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -46,7 +46,7 @@ def home():
     return jsonify({
         "success": True,
         "message": "TrackMyStreet AI Service is running",
-        "endpoint": "/detect"
+        "endpoint": "/detect",
     })
 
 
@@ -55,7 +55,7 @@ def detect():
     if "image" not in request.files:
         return jsonify({
             "success": False,
-            "error": "No image uploaded"
+            "error": "No image uploaded.",
         }), 400
 
     image = request.files["image"]
@@ -63,46 +63,83 @@ def detect():
     if not image.filename:
         return jsonify({
             "success": False,
-            "error": "No image selected"
+            "error": "No image selected.",
         }), 400
 
-    try:
-        original_filename = secure_filename(image.filename)
+    original_filename = secure_filename(image.filename)
 
-        if not original_filename:
+    if not original_filename:
+        return jsonify({
+            "success": False,
+            "error": "Invalid image filename.",
+        }), 400
+
+    extension = Path(original_filename).suffix.lower()
+
+    if extension not in {".jpg", ".jpeg", ".png"}:
+        return jsonify({
+            "success": False,
+            "error": "Please upload a JPG or PNG road image.",
+        }), 400
+
+    filename = f"{uuid.uuid4().hex}_{original_filename}"
+    image_path = UPLOAD_FOLDER / filename
+
+    try:
+        image.save(str(image_path))
+
+        # Enforce the upload size limit on the server too.
+        if image_path.stat().st_size > MAX_IMAGE_SIZE:
+            image_path.unlink(missing_ok=True)
             return jsonify({
                 "success": False,
-                "error": "Invalid image filename"
-            }), 400
-
-        filename = f"{uuid.uuid4().hex}_{original_filename}"
-        image_path = UPLOAD_FOLDER / filename
-
-        image.save(str(image_path))
+                "error": "Image size must be less than 5 MB.",
+            }), 413
 
         result = detect_potholes(
             str(image_path),
-            str(RESULT_FOLDER)
+            str(RESULT_FOLDER),
         )
+
+        damage_detected = result.get("damage_detected")
+        total_detections = result.get("total_detections")
+        detections = result.get("detections")
+
+        if (
+            not isinstance(damage_detected, bool)
+            or not isinstance(total_detections, int)
+            or not isinstance(detections, list)
+        ):
+            raise ValueError("Unexpected response from the AI model.")
 
         annotated_path = result.get("annotated_image")
         annotated_filename = (
             Path(annotated_path).name if annotated_path else None
         )
 
+        message = (
+            "Road damage detected. Please review the AI results."
+            if damage_detected and total_detections > 0
+            else (
+                "The AI model did not detect any road damage. "
+                "Please upload a clear image showing a pothole "
+                "or other supported road damage."
+            )
+        )
+
         return jsonify({
             "success": True,
-            "filename": original_filename,
+            "message": message,
             "result": {
-                "damage_detected": result["damage_detected"],
-                "total_detections": result["total_detections"],
-                "detections": result["detections"],
+                "damage_detected": damage_detected,
+                "total_detections": total_detections,
+                "detections": detections,
                 "annotated_image": (
                     f"/results/{annotated_filename}"
                     if annotated_filename
                     else None
-                )
-            }
+                ),
+            },
         })
 
     except Exception:
@@ -110,7 +147,7 @@ def detect():
 
         return jsonify({
             "success": False,
-            "error": "AI detection failed. Check the Flask terminal."
+            "error": "AI detection failed. Check the Flask terminal.",
         }), 500
 
 
@@ -123,5 +160,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5001,
-        debug=True
+        debug=False,
     )

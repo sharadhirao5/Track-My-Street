@@ -14,6 +14,49 @@ import "../styles/myComplaints.css";
 
 const API_URL = "http://localhost:5000";
 
+// Safely parse API responses and preserve HTTP status information.
+async function readApiResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const text = await response.text();
+
+  
+  let data = {};
+
+  if (contentType.includes("application/json")) {
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("The server returned invalid JSON.");
+    }
+  } else {
+    const preview = text.slice(0, 160).replace(/\s+/g, " ");
+    const error = new Error(
+      `Complaints API returned non-JSON data (${response.status}) at ${response.url}. ${preview}`
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    const error = new Error(
+      data.message ||
+        (response.status === 401
+          ? "Your session has expired. Please log in again."
+          : "You do not have permission to view these complaints.")
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || `Failed to load complaints (${response.status}).`
+    );
+  }
+
+  return data;
+}
+
 function MyComplaints() {
   const navigate = useNavigate();
 
@@ -22,17 +65,43 @@ function MyComplaints() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  const handleRequestError = useCallback(
+    (fetchError) => {
+      console.error("Error fetching complaints:", fetchError);
+
+      if (
+        fetchError.status === 401 ||
+        fetchError.status === 403
+      ) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        navigate("/login", {
+          state: { from: "/complaints" },
+          replace: true,
+        });
+        return;
+      }
+
+      setError(
+        fetchError.message ||
+          "Unable to load complaints. Please try again."
+      );
+    },
+    [navigate]
+  );
+
   const fetchComplaints = useCallback(
     async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError("");
+
       try {
-        if (isRefresh) {
-          setRefreshing(true);
-        } else {
-          setLoading(true);
-        }
-
-        setError("");
-
         const token = localStorage.getItem("token");
 
         if (!token) {
@@ -45,25 +114,11 @@ function MyComplaints() {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
+            Accept: "application/json",
           },
         });
 
-        const data = await response.json();
-
-        if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          navigate("/login", {
-            state: { from: "/complaints" },
-          });
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load complaints."
-          );
-        }
+        const data = await readApiResponse(response);
 
         let complaintList = [];
 
@@ -77,17 +132,13 @@ function MyComplaints() {
 
         setComplaints(complaintList);
       } catch (fetchError) {
-        console.error("Error fetching complaints:", fetchError);
-        setError(
-          fetchError.message ||
-            "Unable to load complaints. Please try again."
-        );
+        handleRequestError(fetchError);
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [navigate]
+    [handleRequestError]
   );
 
   useEffect(() => {
@@ -99,7 +150,10 @@ function MyComplaints() {
       .toLowerCase()
       .replace(/[_-]/g, " ");
 
-    if (normalized.includes("resolv") || normalized.includes("clos")) {
+    if (
+      normalized.includes("resolv") ||
+      normalized.includes("clos")
+    ) {
       return "Resolved";
     }
 
@@ -201,6 +255,16 @@ function MyComplaints() {
   return (
     <>
       <Navbar />
+      <div className="back-button-wrapper">
+  <button
+    type="button"
+    className="back-button"
+    onClick={() => navigate("/dashboard")}
+  >
+    ← Back to Dashboard
+  </button>
+</div>
+  
 
       <main className="complaints-page">
         <section className="complaints-header">
@@ -282,12 +346,15 @@ function MyComplaints() {
               const status = getStatus(
                 complaint.status || complaint.complaintStatus
               );
+
               const complaintId = getComplaintId(complaint);
+
               const imageUrl = getImageUrl(
                 complaint.image ||
                   complaint.imageUrl ||
                   complaint.photo
               );
+
               const ai = complaint.aiDetection;
 
               return (
@@ -372,8 +439,12 @@ function MyComplaints() {
                     complaint.longitude != null) && (
                     <div className="complaint-location-coordinates">
                       <strong>Coordinates</strong>
-                      <p>Latitude: {complaint.latitude ?? "N/A"}</p>
-                      <p>Longitude: {complaint.longitude ?? "N/A"}</p>
+                      <p>
+                        Latitude: {complaint.latitude ?? "N/A"}
+                      </p>
+                      <p>
+                        Longitude: {complaint.longitude ?? "N/A"}
+                      </p>
                     </div>
                   )}
 
@@ -390,6 +461,7 @@ function MyComplaints() {
                           <strong>Damage detected:</strong>{" "}
                           {ai.damage_detected ? "Yes" : "No"}
                         </p>
+
                         <p>
                           <strong>Total detections:</strong>{" "}
                           {ai.total_detections ?? 0}

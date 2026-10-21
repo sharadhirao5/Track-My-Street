@@ -201,31 +201,7 @@ function Dashboard() {
           </button>
         </section>
 
-        <section className="quick-actions">
-          <h2>Quick Actions</h2>
-
-          <div className="action-grid">
-            <Link to="/report" className="action-card">
-              <FaCamera className="action-icon" />
-              <div>
-                <h3>Report Road Damage</h3>
-                <p>
-                  Upload an image and report a damaged road.
-                </p>
-              </div>
-            </Link>
-
-            <Link to="/complaints" className="action-card">
-              <FaClipboardList className="action-icon" />
-              <div>
-                <h3>View My Complaints</h3>
-                <p>
-                  Track the status of your submitted complaints.
-                </p>
-              </div>
-            </Link>
-          </div>
-        </section>
+      
 
         <section className="complaints-section">
           <div className="section-heading">

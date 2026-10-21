@@ -7,6 +7,49 @@ import "../styles/adminDashboard.css";
 const API = "http://localhost:5000/api";
 const STATUSES = ["Pending", "In Progress", "Resolved"];
 
+// Safely read API responses and handle authentication errors.
+async function readApiResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const body = await response.text();
+
+  let data = {};
+
+  if (contentType.includes("application/json")) {
+    try {
+      data = body ? JSON.parse(body) : {};
+    } catch {
+      throw new Error(`The API returned invalid JSON: ${response.url}`);
+    }
+  } else {
+    const preview = body.slice(0, 200).replace(/\s+/g, " ");
+    const error = new Error(
+      `API returned non-JSON data. Status: ${response.status}. URL: ${response.url}. Response: ${preview}`
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    const error = new Error(
+      data.message ||
+        (response.status === 401
+          ? "Your session has expired. Please log in again."
+          : "You do not have permission to perform this action.")
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || `Request failed (${response.status}).`
+    );
+  }
+
+  return data;
+}
+
 function formatDamageType(value) {
   return String(value || "Unknown")
     .replaceAll("_", " ")
@@ -74,7 +117,6 @@ function AIResults({ ai }) {
       {ai.annotated_image && (
         <div className="admin-ai-image-wrap">
           <p>Annotated detection image</p>
-
           <img
             src={
               String(ai.annotated_image).startsWith("http")
@@ -133,10 +175,12 @@ function AdminDashboard() {
 
     setLoading(true);
     setError("");
+    setMessage("");
 
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
+        Accept: "application/json",
       };
 
       const [statsResponse, complaintsResponse] = await Promise.all([
@@ -144,34 +188,40 @@ function AdminDashboard() {
         fetch(`${API}/complaints/admin`, { headers }),
       ]);
 
-      const statsData = await statsResponse.json();
-      const complaintsData = await complaintsResponse.json();
+      // Parse both responses and handle authentication consistently.
+      const results = await Promise.allSettled([
+        readApiResponse(statsResponse),
+        readApiResponse(complaintsResponse),
+      ]);
 
-      if (
-        statsResponse.status === 401 ||
-        statsResponse.status === 403 ||
-        complaintsResponse.status === 401 ||
-        complaintsResponse.status === 403
-      ) {
-        logout();
-        return;
+      const failedResult = results.find(
+        (result) => result.status === "rejected"
+      );
+
+      if (failedResult) {
+        const requestError = failedResult.reason;
+
+        if (
+          requestError.status === 401 ||
+          requestError.status === 403
+        ) {
+          logout();
+          return;
+        }
+
+        throw requestError;
       }
 
-      if (!statsResponse.ok) {
-        throw new Error(
-          statsData.message || "Unable to load dashboard statistics."
-        );
-      }
+      const statsData = results[0].value;
+      const complaintsData = results[1].value;
 
-      if (!complaintsResponse.ok) {
-        throw new Error(
-          complaintsData.message || "Unable to load complaints."
-        );
-      }
-
-      const complaintList = Array.isArray(complaintsData.complaints)
-        ? complaintsData.complaints
-        : [];
+      const complaintList = Array.isArray(complaintsData)
+        ? complaintsData
+        : Array.isArray(complaintsData.complaints)
+          ? complaintsData.complaints
+          : Array.isArray(complaintsData.data)
+            ? complaintsData.data
+            : [];
 
       setStatistics(statsData);
       setComplaints(complaintList);
@@ -180,14 +230,15 @@ function AdminDashboard() {
         const next = { ...previous };
 
         for (const complaint of complaintList) {
-          if (!(complaint._id in next)) {
-            next[complaint._id] = complaint.status;
+          if (complaint._id && !(complaint._id in next)) {
+            next[complaint._id] = complaint.status || "Pending";
           }
         }
 
         return next;
       });
     } catch (err) {
+      console.error("Admin dashboard loading failed:", err);
       setError(err.message || "Unable to load the admin dashboard.");
     } finally {
       setLoading(false);
@@ -215,18 +266,24 @@ function AdminDashboard() {
 
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      logout();
+      return;
+    }
+
     setUpdatingId(complaint._id);
     setError("");
     setMessage("");
 
     try {
       const response = await fetch(
-        `${API}/complaints/${complaint._id}/status`,
+        `${API}/complaints/${encodeURIComponent(complaint._id)}/status`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            Accept: "application/json",
           },
           body: JSON.stringify({
             status: newStatus,
@@ -235,20 +292,22 @@ function AdminDashboard() {
         }
       );
 
-      const data = await response.json();
+      let data;
 
-      if (response.status === 401 || response.status === 403) {
-        logout();
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to update status.");
+      try {
+        data = await readApiResponse(response);
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) {
+          logout();
+          return;
+        }
+        throw err;
       }
 
       setMessage(`Complaint status updated to ${newStatus}.`);
       await loadData();
     } catch (err) {
+      console.error("Complaint status update failed:", err);
       setError(err.message || "Unable to update complaint status.");
     } finally {
       setUpdatingId("");
@@ -337,7 +396,9 @@ function AdminDashboard() {
         <div className="admin-heading">
           <div>
             <h2>Overview</h2>
-            <p>Review reports, AI results and manage complaint progress.</p>
+            <p>
+              Review reports, AI results and manage complaint progress.
+            </p>
           </div>
         </div>
 
@@ -365,7 +426,6 @@ function AdminDashboard() {
           ))}
         </section>
 
-        {/* New map section. Uses the existing protected /api/map/complaints API. */}
         <ComplaintMap />
 
         <section className="admin-panel">
@@ -450,7 +510,15 @@ function AdminDashboard() {
 
                         {complaint.image && (
                           <a
-                            href={`http://localhost:5000${complaint.image}`}
+                            href={
+                              String(complaint.image).startsWith("http")
+                                ? complaint.image
+                                : `http://localhost:5000${
+                                    String(complaint.image).startsWith("/")
+                                      ? ""
+                                      : "/"
+                                  }${complaint.image}`
+                            }
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -493,7 +561,8 @@ function AdminDashboard() {
                           className="admin-status-select"
                           value={
                             selectedStatuses[complaint._id] ??
-                            complaint.status
+                            complaint.status ??
+                            "Pending"
                           }
                           onChange={(event) =>
                             setSelectedStatuses((previous) => ({
@@ -537,7 +606,9 @@ function AdminDashboard() {
         </section>
 
         <section className="admin-panel">
-          <h2 className="admin-panel-heading">Complaints by Damage Type</h2>
+          <h2 className="admin-panel-heading">
+            Complaints by Damage Type
+          </h2>
 
           {!statistics?.byDamageType?.length ? (
             <p className="admin-empty">
