@@ -1,0 +1,227 @@
+/* =====================================================
+   TRACK MY STREET - PROFESSIONAL PAGE BUTTONS
+   ===================================================== */
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+
+/* =====================================================
+   BASE BUTTON
+   ===================================================== */
+
+.page-action-btn {
+  min-height: 46px;
+  padding: 0 18px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-radius: 10px;
+  border: 1px solid transparent;
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+
+  line-height: 1;
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   DASHBOARD / NAVIGATION BUTTON
+   ===================================================== */
+
+.page-action-btn--dark {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+
+  box-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.15);
+}
+
+.page-action-btn--dark:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(15, 23, 42, 0.20);
+}
+
+.page-action-btn--dark:active {
+  transform: translateY(0);
+}
+
+
+/* =====================================================
+   PRIMARY BLUE BUTTON
+   ===================================================== */
+
+.page-action-btn--primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+
+  box-shadow:
+    0 2px 5px rgba(37, 99, 235, 0.18);
+}
+
+.page-action-btn--primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(37, 99, 235, 0.25);
+}
+
+.page-action-btn--primary:active {
+  transform: translateY(0);
+}
+
+
+/* =====================================================
+   SECONDARY / REFRESH BUTTON
+   ===================================================== */
+
+.page-action-btn--secondary {
+  background: #ffffff;
+  color: #0f172a;
+
+  border-color: #cbd5e1;
+
+  box-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.06);
+}
+
+.page-action-btn--secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(15, 23, 42, 0.10);
+}
+
+.page-action-btn--secondary:active {
+  transform: translateY(0);
+}
+
+
+/* =====================================================
+   DANGER / ERROR BUTTON
+   ===================================================== */
+
+.page-action-btn--danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.page-action-btn--danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 12px rgba(220, 38, 38, 0.20);
+}
+
+
+/* =====================================================
+   DISABLED BUTTON
+   ===================================================== */
+
+.page-action-btn:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none !important;
+
+  box-shadow: none;
+}
+
+.page-action-btn--primary:disabled {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.page-action-btn--secondary:disabled {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+
+/* =====================================================
+   ICON
+   ===================================================== */
+
+.page-action-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+  .page-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .page-action-btn {
+    min-height: 44px;
+    padding: 0 15px;
+    font-size: 14px;
+  }
+
+}
+
+
+/* =====================================================
+   SMALL MOBILE
+   ===================================================== */
+
+@media (max-width: 480px) {
+
+  .page-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .page-action-btn {
+    width: 100%;
+  }
+
+}

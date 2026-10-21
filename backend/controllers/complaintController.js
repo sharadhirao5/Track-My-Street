@@ -155,6 +155,33 @@ const createComplaint = async (req, res) => {
 
 
     // -------------------------------------------------
+    // CREATE NOTIFICATION
+    // -------------------------------------------------
+    // Notify the citizen immediately after
+    // successfully creating the complaint.
+    // -------------------------------------------------
+
+    await createNotification({
+
+      userId:
+        req.user.id,
+
+      complaintId:
+        complaint._id,
+
+      title:
+        "Complaint Submitted",
+
+      message:
+        `Your complaint "${complaint.title}" has been submitted successfully.`,
+
+      type:
+        "Complaint Created"
+
+    });
+
+
+    // -------------------------------------------------
     // RESPONSE
     // -------------------------------------------------
 
@@ -430,24 +457,39 @@ const getAdminComplaints =
         filter.$or = [
 
           {
+
             title: {
+
               $regex: search,
+
               $options: "i"
+
             }
+
           },
 
           {
+
             description: {
+
               $regex: search,
+
               $options: "i"
+
             }
+
           },
 
           {
+
             damageType: {
+
               $regex: search,
+
               $options: "i"
+
             }
+
           }
 
         ];
@@ -464,7 +506,9 @@ const getAdminComplaints =
           )
 
           .sort({
+
             createdAt: -1
+
           });
 
 
@@ -767,12 +811,17 @@ const getComplaintHistory =
         })
 
         .populate(
+
           "changedBy",
+
           "name email role"
+
         )
 
         .sort({
+
           createdAt: 1
+
         });
 
 
