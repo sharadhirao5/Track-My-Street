@@ -19,7 +19,6 @@ function Dashboard() {
         <h1>Citizen Dashboard</h1>
 
         <div className="dashboard-cards">
-
           {/* Report Damage */}
           <div
             className="dashboard-card"
@@ -44,30 +43,25 @@ function Dashboard() {
 
           {/* Notifications */}
           <div
-  className="dashboard-card"
-  onClick={() => navigate("/notifications")}
-  style={{ cursor: "pointer" }}
->
-  <FaBell className="dashboard-icon" />
-
-  <h3>Notifications</h3>
-
-  <p>Track complaint updates.</p>
-</div>
+            className="dashboard-card"
+            onClick={() => navigate("/notifications")}
+            style={{ cursor: "pointer" }}
+          >
+            <FaBell className="dashboard-icon" />
+            <h3>Notifications</h3>
+            <p>Track complaint updates.</p>
+          </div>
 
           {/* Profile */}
           <div
-  className="dashboard-card"
-  onClick={() => navigate("/profile")}
-  style={{ cursor: "pointer" }}
->
-  <FaUserCircle className="dashboard-icon" />
-
-  <h3>Profile</h3>
-
-  <p>Manage your account.</p>
-</div>
-
+            className="dashboard-card"
+            onClick={() => navigate("/profile")}
+            style={{ cursor: "pointer" }}
+          >
+            <FaUserCircle className="dashboard-icon" />
+            <h3>Profile</h3>
+            <p>Manage your account.</p>
+          </div>
         </div>
       </div>
     </>
